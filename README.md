@@ -1,7 +1,8 @@
 # Proyecto Final — Data Science Henry
 ## Instacart Market Basket Analysis
 
-Análisis exploratorio y modelo predictivo sobre el dataset de Instacart Market Basket Analysis.
+Sistema de recomendación de productos construido sobre el dataset público de [Instacart Market Basket Analysis](https://www.kaggle.com/competitions/instacart-market-basket-analysis/data).
+
 
 
 ---
@@ -10,10 +11,17 @@ Análisis exploratorio y modelo predictivo sobre el dataset de Instacart Market 
 
 ```
 ProyectoFinal-DataScience-Henry/
-├── data/               ← CSVs del dataset (ver instrucciones abajo)
-├── src/
-│   ├── cargar_datos.py ← función de carga de datos
-│   └── EDA.ipynb       ← análisis exploratorio
+├── data/
+│   ├── raw/
+│   │   └── instacart/          ← CSVs originales del dataset (no incluidos en el repo)
+│   └── processed/              ← Archivos generados por los notebooks
+├── notebooks/
+│   ├── 01_Data_Understanding.ipynb
+│   ├── 02_EDA.ipynb
+│   ├── 03_Data_Preprocessing.ipynb
+│   └── 04_Feature_Engineering.ipynb
+├── models/                     ← Modelos entrenados
+├── src/                        ← Scripts y utilidades
 ├── requirements.txt
 └── README.md
 ```
@@ -25,22 +33,24 @@ ProyectoFinal-DataScience-Henry/
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <url-del-repositorio>
+git clone https://github.com/Caromponce/ProyectoFinal-DataScience-Henry.git
 cd ProyectoFinal-DataScience-Henry
 ```
 
-### 2. Crear la carpeta `data` y agregar los CSVs
+### 2. Descargar el dataset
 
-El dataset **no está incluido** en el repositorio por su tamaño. Descargalo desde [Kaggle — Instacart Market Basket Analysis](https://www.kaggle.com/competitions/instacart-market-basket-analysis/data) y colocá los 6 archivos en la carpeta llamada `data/`:
+El dataset **no está incluido** en el repositorio por su tamaño. Descargalo desde [Kaggle — Instacart Market Basket Analysis](https://www.kaggle.com/competitions/instacart-market-basket-analysis/data) y colocá los 6 archivos en `data/raw/instacart/`:
 
 ```
 data/
-├── aisles.csv
-├── departments.csv
-├── orders.csv
-├── products.csv
-├── order_products__prior.csv
-└── order_products__train.csv
+└── raw/
+    └── instacart/
+        ├── aisles.csv
+        ├── departments.csv
+        ├── orders.csv
+        ├── products.csv
+        ├── order_products__prior.csv
+        └── order_products__train.csv
 ```
 
 ### 3. Instalar dependencias
@@ -49,19 +59,40 @@ data/
 pip install -r requirements.txt
 ```
 
-### 4. Ejecutar el notebook
+### 4. Ejecutar los notebooks en orden
 
-Abrí `src/EDA.ipynb` en Jupyter y ejecutá las celdas en orden.
+```
+notebooks/01_Data_Understanding.ipynb
+notebooks/02_EDA.ipynb
+notebooks/03_Data_Preprocessing.ipynb
+notebooks/04_Feature_Engineering.ipynb
+```
 
 ---
 
 ## Dataset
 
-| Archivo | Descripción |
-|---|---|
-| `aisles.csv` | 134 pasillos del supermercado |
-| `departments.csv` | 21 departamentos |
-| `products.csv` | Catálogo de productos con pasillo y departamento |
-| `orders.csv` | Órdenes de cada usuario (día, hora, días desde última compra) |
-| `order_products__prior.csv` | Productos del historial de compras |
-| `order_products__train.csv` | Productos de la última orden (set de entrenamiento) |
+| Archivo | Filas | Descripción |
+|---|---|---|
+| `aisles.csv` | 134 | Pasillos del supermercado |
+| `departments.csv` | 21 | Departamentos |
+| `products.csv` | 49.688 | Catálogo de productos |
+| `orders.csv` | 3.421.083 | Pedidos por usuario (día, hora, frecuencia) |
+| `order_products__prior.csv` | 32.434.489 | Historial completo de compras |
+| `order_products__train.csv` | 1.384.617 | Último pedido de cada usuario (set de entrenamiento) |
+
+---
+
+## Estado del proyecto
+
+| Notebook | Descripción | Estado |
+|---|---|---|
+| 01 · Data Understanding | Exploración inicial, estructura y métricas generales | ✅ |
+| 02 · EDA | Calidad de datos, comportamiento de usuarios y productos | ✅ |
+| 03 · Data Preprocessing | Integración de tablas y filtrado de interacciones | ✅ |
+| 04 · Feature Engineering | Features de usuario/producto y muestra para modelado | ✅ |
+| 05 · Modelado | -  | 🔄 En progreso |
+
+---
+
+
