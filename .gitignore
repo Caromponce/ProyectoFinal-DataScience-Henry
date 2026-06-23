@@ -204,3 +204,7 @@ $RECYCLE.BIN/
 # Datasets
 data/**/*.csv
 data/**/*.parquet
+data/**/*.npz
+
+models/*.pkl
+models/*.joblib
