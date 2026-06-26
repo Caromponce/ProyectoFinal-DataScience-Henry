@@ -1,0 +1,28 @@
+{
+  "distribution": [
+    {
+      "segment": "Nuevo",
+      "users": 1120,
+      "percentage": 11.2,
+      "strategy": "Popularity Model"
+    },
+    {
+      "segment": "Ocasional",
+      "users": 4480,
+      "percentage": 44.8,
+      "strategy": "Item-Item Collaborative Filtering"
+    },
+    {
+      "segment": "Frecuente",
+      "users": 1060,
+      "percentage": 10.6,
+      "strategy": "Market Basket Analysis"
+    },
+    {
+      "segment": "Leal",
+      "users": 3340,
+      "percentage": 33.4,
+      "strategy": "Reorder Prediction"
+    }
+  ]
+}
