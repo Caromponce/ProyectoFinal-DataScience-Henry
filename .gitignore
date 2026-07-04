@@ -203,3 +203,6 @@ $RECYCLE.BIN/
 
 # Datasets
 data/*.csv
+
+models/*.joblib
+*.zip
