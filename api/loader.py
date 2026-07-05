@@ -1,11 +1,20 @@
 from pathlib import Path
 import sys
+import subprocess
+import os
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SRC_DIR = ROOT_DIR / "src"
+MODELS_DIR = ROOT_DIR / "models"
 
 if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
+
+# Garantiza que los modelos existan antes de que FastAPI intente cargarlos
+subprocess.run(["python", str(ROOT_DIR / "download_models.py")], check=True)
+
+print("Modelos verificados desde api.loader:")
+print(os.listdir(MODELS_DIR))
 
 from kmeans_segmenter import CustomerSegmenter
 from popularity_recommender import PopularityRecommender
