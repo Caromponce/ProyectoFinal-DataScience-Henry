@@ -16,6 +16,8 @@ COPY . .
 RUN sed -i 's/\r$//' start.sh
 RUN chmod +x start.sh
 
+ENV PYTHONPATH=/app
+
 EXPOSE 7860
 
 CMD ["./start.sh"]
