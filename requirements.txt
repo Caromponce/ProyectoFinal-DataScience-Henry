@@ -38,7 +38,7 @@ packaging>=20,<26
 pandas>=2.3.3,<3
 pandas-stubs==3.0.3.260530
 parso==0.8.7
-pillow==12.2.0
+pillow>=9,<12
 platformdirs==4.10.0
 plotly==6.8.0
 ply==3.11
