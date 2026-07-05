@@ -1,8 +1,5 @@
 import os
 
-DATA_MODE = os.getenv("DATA_MODE", "api")
+DATA_MODE = "api"
 
-API_BASE_URL = os.getenv(
-    "API_BASE_URL",
-    "http://127.0.0.1:8000"
-)
+API_BASE_URL = "https://proyectofinal-datascience-henry.onrender.com"
