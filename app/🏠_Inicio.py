@@ -83,8 +83,8 @@ with status_col5:
     st.markdown(
         """
         <div class="status-card">
-            <div class="status-title">🟡 Deploy Cloud</div>
-            <div class="status-value status-progress">En proceso</div>
+            <div class="status-title">🟢 Deploy Cloud</div>
+            <div class="status-value status-ok">Conectado</div>
         </div>
         """,
         unsafe_allow_html=True

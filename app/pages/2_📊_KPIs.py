@@ -31,6 +31,7 @@ def load_metrics():
 with st.sidebar:
     st.image("assets/logo_data_horizon.png", width=120)
 
+
 henry_tag("Evaluación de modelos")
 henry_title("KPIs del Sistema")
 
@@ -46,6 +47,7 @@ st.divider()
 
 data = load_metrics()
 
+
 # ==========================
 # KPIs generales
 # ==========================
@@ -58,6 +60,7 @@ c3.metric("Interacciones", f"{data['total_interactions']:,}".replace(",", "."))
 c4.metric("Sparsity", f"{data['sparsity']:.2f}%")
 
 st.divider()
+
 
 # ==========================
 # Arquitectura del recomendador
@@ -92,6 +95,7 @@ st.info(
 
 st.divider()
 
+
 # ==========================
 # Segmentación
 # ==========================
@@ -109,6 +113,7 @@ k2.metric("Silhouette Score", f"{kmeans['silhouette']:.4f}")
 k3.metric("Davies-Bouldin", f"{kmeans['davies_bouldin']:.4f}")
 
 st.divider()
+
 
 # ==========================
 # Performance de modelos
@@ -159,10 +164,19 @@ if not chart_df.empty:
         chart_df,
         x="model",
         y="value_pct",
-        text=chart_df["value_pct"].round(2).astype(str) + "%"
+        text=chart_df["value_pct"].round(2).astype(str) + "%",
+        color="model",
+        color_discrete_map={
+            "Item-Item Collaborative Filtering": "#7C3AED",
+            "Reorder Prediction (XGBoost)": "#F2E40C"
+        }
     )
 
-    fig.update_traces(textposition="outside")
+    fig.update_traces(
+        textposition="outside",
+        marker_line_color="#1A1A1A",
+        marker_line_width=1
+    )
 
     fig.update_layout(
         plot_bgcolor="white",
@@ -175,12 +189,16 @@ if not chart_df.empty:
         xaxis_title="Modelo",
         yaxis_title="Valor (%)",
         showlegend=False,
-        margin=dict(l=20, r=20, t=30, b=20)
+        margin=dict(l=20, r=20, t=30, b=20),
+        yaxis=dict(
+            range=[0, chart_df["value_pct"].max() * 1.18]
+        )
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
+
 
 # ==========================
 # Reorder Prediction
@@ -212,6 +230,7 @@ st.success(
 )
 
 st.divider()
+
 
 # ==========================
 # Conclusiones
