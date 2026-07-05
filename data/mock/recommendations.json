@@ -1,0 +1,34 @@
+{
+  "user_id": 123,
+  "segment": "Leal",
+  "strategy": "reorder_prediction",
+  "strategy_name": "Reorder Prediction",
+  "objective": "Anticipar compras recurrentes y mejorar retención",
+  "recommendations": [
+    {
+      "product_id": 24852,
+      "product_name": "Organic Bananas",
+      "score": 0.92
+    },
+    {
+      "product_id": 13176,
+      "product_name": "Bag of Organic Bananas",
+      "score": 0.88
+    },
+    {
+      "product_id": 21137,
+      "product_name": "Organic Strawberries",
+      "score": 0.81
+    },
+    {
+      "product_id": 21903,
+      "product_name": "Organic Baby Spinach",
+      "score": 0.76
+    },
+    {
+      "product_id": 47209,
+      "product_name": "Organic Hass Avocado",
+      "score": 0.74
+    }
+  ]
+}

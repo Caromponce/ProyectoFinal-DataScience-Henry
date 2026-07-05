@@ -1,0 +1,32 @@
+{
+  "rules": [
+    {
+      "antecedents": "Organic Bananas + Organic Strawberries",
+      "consequents": "Organic Baby Spinach",
+      "support": 0.084,
+      "confidence": 0.72,
+      "lift": 3.41
+    },
+    {
+      "antecedents": "Bag of Organic Bananas + Organic Hass Avocado",
+      "consequents": "Organic Whole Milk",
+      "support": 0.069,
+      "confidence": 0.66,
+      "lift": 2.94
+    },
+    {
+      "antecedents": "Organic Raspberries + Organic Blueberries",
+      "consequents": "Organic Strawberries",
+      "support": 0.057,
+      "confidence": 0.61,
+      "lift": 2.71
+    },
+    {
+      "antecedents": "Organic Baby Spinach + Organic Hass Avocado",
+      "consequents": "Organic Cucumber",
+      "support": 0.052,
+      "confidence": 0.58,
+      "lift": 2.48
+    }
+  ]
+}

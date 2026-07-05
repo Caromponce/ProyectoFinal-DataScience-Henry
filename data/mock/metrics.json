@@ -1,0 +1,24 @@
+{
+  "total_users": 10000,
+  "total_products": 32566,
+  "total_interactions": 2203808,
+  "sparsity": 99.7365,
+  "models": [
+    {
+      "model": "Baseline Popularity",
+      "recall_at_10": 0.046
+    },
+    {
+      "model": "User-Based CF",
+      "recall_at_10": 0.066
+    },
+    {
+      "model": "Market Basket",
+      "recall_at_10": 0.052
+    },
+    {
+      "model": "Reorder Prediction",
+      "recall_at_10": 0.071
+    }
+  ]
+}
