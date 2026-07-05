@@ -201,10 +201,21 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,windows
 
-# Datasets (raw y procesados — excluir de git por tamaño)
+# Datasets
 data/**/*.csv
 data/**/*.parquet
 data/**/*.npz
+
+# Ignorar JSON de datos...
 data/**/*.json
 
-models/*.joblib
+# ...excepto el que usa la app
+!data/processed/dashboard_metrics.json
+
+# Modelos
+models/
+*.joblib
+*.pkl
+
+# Comprimidos
+*.zip
