@@ -1,4 +1,12 @@
+<p align="center">
+
 # 🛒 Sistema Inteligente de Recomendación de Productos
+
+### Proyecto Final · Henry Data Science
+
+Arquitectura híbrida de Machine Learning para recomendaciones personalizadas sobre Instacart
+
+</p>
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi)
@@ -8,9 +16,8 @@
 ![XGBoost](https://img.shields.io/badge/XGBoost-ML-success)
 ![Render](https://img.shields.io/badge/Deploy-Render-46E3B7)
 
-Proyecto Final de la carrera **Data Science** de **Henry**.
-
-Desarrollado por **Data Horizon**.
+> **Proyecto Final | Henry Data Science**  
+> Desarrollado por **Data Horizon**, una solución de Machine Learning orientada a generar recomendaciones personalizadas mediante una arquitectura híbrida de modelos.
 
 ---
 
@@ -34,52 +41,55 @@ Todo el sistema se encuentra desplegado en la nube mediante **Render**, utilizan
 
 ---
 
-# 🌐 Demo
+## 🌐 Demo
 
-### Aplicación
+🚀 **Aplicación**
 
 https://proyectofinal-datascience-henry.onrender.com
 
-### Repositorio
+📦 **Repositorio**
 
 https://github.com/Caromponce/ProyectoFinal-DataScience-Henry
 
+
 ---
 
-# 🏗 Arquitectura
+# 🏗️ Arquitectura del Sistema
 
-```
+El sistema implementa una **arquitectura híbrida de recomendación**, donde la API selecciona automáticamente la estrategia más adecuada según el comportamiento del usuario y el contexto de compra.
 
-Usuario
+La solución integra múltiples modelos de Machine Learning especializados, orquestados mediante FastAPI y consumidos desde una interfaz desarrollada en Streamlit. Los modelos entrenados se descargan dinámicamente desde Google Drive al iniciar el contenedor Docker desplegado en Render.
 
-↓
+<p align="center">
+  <img src="assets/architecture.png" alt="Arquitectura del Sistema" width="1000">
+</p>
 
-Streamlit
+# 📸 Capturas de la aplicación
 
-↓
+## Recomendador de productos
 
-FastAPI
+<p align="center">
+  <img src="assets/Recomendador.jpg" width="900">
+</p>
 
-↓
+## Segmentación de usuarios
 
-Segmentación (KMeans)
+<p align="center">
+  <img src="assets/segmentacion.jpg" width="900">
+</p>
 
-↓
+## Market Basket Analysis
 
-Selección automática del modelo
+<p align="center">
+  <img src="assets/Market.jpg" width="900">
+</p>
 
-↓
+## KPIs del sistema
 
-Popularity
-Item-Item CF
-Market Basket Analysis
-Reorder Prediction
+<p align="center">
+  <img src="assets/kpi.jpg" width="900">
+</p>
 
-↓
-
-Respuesta
-
-```
 
 ---
 
@@ -141,9 +151,21 @@ ProyectoFinal-DataScience-Henry/
 
 # 📊 Dataset
 
-El proyecto utiliza el dataset público **Instacart Market Basket Analysis**, que contiene el historial anonimizado de compras realizadas por más de **206.000 usuarios**.
+El proyecto utiliza el dataset público **Instacart Market Basket Analysis**, que contiene el historial anonimizado de compras de un supermercado online.
 
-Está compuesto por más de **32 millones de interacciones** distribuidas en seis tablas relacionadas.
+### Resumen
+
+| Indicador | Valor |
+|-----------|------:|
+| Usuarios | 206.209 |
+| Productos | 49.688 |
+| Interacciones | 32.434.489 |
+| Pasillos | 134 |
+| Departamentos | 21 |
+| Sparsity | 99.68% |
+| Tasa de recompra | 58.97% |
+
+### Archivos del dataset
 
 | Tabla | Filas |
 |--------|-------:|
@@ -154,11 +176,22 @@ Está compuesto por más de **32 millones de interacciones** distribuidas en sei
 | order_products__prior.csv | 32.434.489 |
 | order_products__train.csv | 1.384.617 |
 
-Durante el análisis exploratorio se identificó una matriz Usuario–Producto altamente dispersa (99.68% de sparsity), una tasa de recompra cercana al 59% y una distribución de productos con comportamiento Long Tail.
+Durante el análisis exploratorio se identificó una matriz Usuario–Producto altamente dispersa (99.68% de sparsity), una tasa de recompra cercana al 59% y una distribución de productos con comportamiento **Long Tail**, características que motivaron la implementación de una arquitectura híbrida de recomendación.
 
 ---
 
 # 🤖 Modelos Implementados
+
+## Resumen de modelos
+
+| Modelo | Tipo | Caso de uso | Estado |
+|---------|------|-------------|:------:|
+| Popularity Baseline | Baseline | Usuarios sin historial (Cold Start) | ✅ |
+| K-Means | No supervisado | Segmentación de usuarios | ✅ |
+| Item-Item Collaborative Filtering | Filtrado colaborativo | Clientes ocasionales | ✅ |
+| Market Basket Analysis (Producto) | Reglas de asociación | Productos complementarios | ✅ |
+| Market Basket Analysis (Pasillos) | Reglas de asociación | Categorías relacionadas | ✅ |
+| Reorder Prediction (XGBoost) | Supervisado | Clientes frecuentes | ✅ |
 
 ## Popularity Baseline
 
@@ -225,40 +258,6 @@ Finalmente se seleccionó **XGBoost** por obtener el mejor desempeño.
 
 ---
 
-# 🔄 Flujo de Recomendación
-
-```
-
-Usuario
-
-↓
-
-Consulta API
-
-↓
-
-Segmentación
-
-↓
-
-Selección de estrategia
-
-↓
-
-Carga del modelo correspondiente
-
-↓
-
-Generación de recomendaciones
-
-↓
-
-Respuesta JSON
-
-```
-
----
-
 # 🚀 API REST
 
 La aplicación expone los siguientes endpoints:
@@ -322,14 +321,14 @@ bash start.sh
 
 El sistema implementa una arquitectura híbrida basada en cinco estrategias complementarias.
 
-| Modelo | Estado |
-|----------|---------|
-| Popularity | Producción |
-| K-Means | Producción |
-| Item-Item CF | Producción |
-| MBA Producto | Producción |
-| MBA Pasillos | Producción |
-| Reorder Prediction | Producción |
+| Estrategia | Segmento objetivo | Objetivo | Estado |
+|------------|-------------------|----------|:------:|
+| Popularity Baseline | Clientes sin historial | Resolver el problema de Cold Start | ✅ Producción |
+| Item-Item Collaborative Filtering | Clientes ocasionales | Recomendar productos similares según historial | ✅ Producción |
+| Market Basket Analysis | Carritos con múltiples productos | Recomendar productos complementarios | ✅ Producción |
+| Reorder Prediction (XGBoost) | Clientes leales | Predecir la recompra de productos | ✅ Producción |
+
+> **Conclusión:** El principal valor del sistema no reside en un único modelo de Machine Learning, sino en una **arquitectura híbrida** que selecciona automáticamente la estrategia de recomendación más adecuada según el segmento del usuario y el contexto de compra.
 
 ---
 
@@ -343,50 +342,12 @@ El sistema implementa una arquitectura híbrida basada en cinco estrategias comp
 
 ---
 
-# 👥 Integrantes
+# 👥 Equipo
 
 ## Data Horizon
 
-- Carolina Ponce
-- Félix Augusto Fernández González
-- Yael Authier
-
-Proyecto Final — Henry Data Science
-
-# 📸 Capturas de la aplicación
-
-## Inicio
-
-<p align="center">
-  <img src="assets/inicio.jpg" width="900">
-</p>
-
-## Recomendador de productos
-
-<p align="center">
-  <img src="assets/Recomendador.jpg" width="900">
-</p>
-
-## Segmentación de usuarios
-
-<p align="center">
-  <img src="assets/segmentacion.jpg" width="900">
-</p>
-
-## Market Basket Analysis
-
-<p align="center">
-  <img src="assets/Market.jpg" width="900">
-</p>
-
-## KPIs del sistema
-
-<p align="center">
-  <img src="assets/kpi.jpg" width="900">
-</p>
-
-## Arquitectura del sistema
-
-<p align="center">
-  <img src="assets/arquitectura.jpg" width="900">
-</p>
+| Integrante | Rol |
+|------------|-----|
+| Carolina Ponce | Data Scientist |
+| Félix Augusto Fernández González | Data Scientist |
+| Yael Authier | Data Scientist |

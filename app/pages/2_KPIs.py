@@ -121,7 +121,7 @@ st.divider()
 
 henry_tag("Performance")
 
-st.subheader("📈 Performance por modelo")
+st.subheader("📈 Métricas comparables de desempeño")
 
 models_df = pd.DataFrame(data["models"])
 
@@ -153,6 +153,7 @@ st.dataframe(
     hide_index=True
 )
 
+# Solo se grafican las métricas porcentuales comparables
 chart_df = models_df[
     models_df["value"].notna() & (models_df["value"] < 1)
 ].copy()
@@ -196,6 +197,12 @@ if not chart_df.empty:
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+    st.caption(
+        "El gráfico compara únicamente métricas porcentuales (Recall@10 y PR-AUC). "
+        "Los modelos de Market Basket Analysis se evalúan por la cantidad de reglas generadas, "
+        "por lo que esa información se presenta en la tabla superior."
+    )
 
 st.divider()
 
