@@ -1,46 +1,66 @@
-# importar funciones mock
-from src.mock_api import (
-    get_mock_recommendations,
-    get_mock_metrics,
-    get_mock_segments,
-    get_mock_market_basket
-)
+# importar librerías
+import os
+import requests
 
 
-def get_recommendations(user_id: int, n: int = 5):
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+
+
+def get_recommendations(user_id: int, product_ids: list[int] | None = None, n: int = 5):
     """
-    Función cliente que hoy usa datos mock.
-    Más adelante se reemplaza por una llamada real a FastAPI.
+    Cliente real para consumir POST /recommend desde FastAPI.
     """
 
-    data = get_mock_recommendations()
+    payload = {
+        "user_id": user_id,
+        "product_ids": product_ids or [],
+        "n": n
+    }
 
-    # ajustamos user_id y cantidad de recomendaciones
-    data["user_id"] = user_id
-    data["recommendations"] = data["recommendations"][:n]
+    response = requests.post(
+        f"{API_URL}/recommend",
+        json=payload,
+        timeout=30
+    )
 
-    return data
+    response.raise_for_status()
+    return response.json()
+
 
 def get_metrics():
     """
-    Función cliente que hoy usa datos mock.
-    Más adelante consumirá GET /metrics desde FastAPI.
+    Cliente real para consumir GET /metrics desde FastAPI.
     """
 
-    return get_mock_metrics()
+    response = requests.get(
+        f"{API_URL}/metrics",
+        timeout=30
+    )
 
-def get_segments():
+    response.raise_for_status()
+    return response.json()
+
+
+def get_user_segment(user_id: int):
     """
-    Cliente para la distribución de segmentos.
-    Más adelante consumirá GET /segments.
+    Cliente real para consumir GET /segment/{user_id} desde FastAPI.
     """
 
-    return get_mock_segments()
+    response = requests.get(
+        f"{API_URL}/segment/{user_id}",
+        timeout=30
+    )
+
+    response.raise_for_status()
+    return response.json()
+
 
 def get_market_basket():
     """
-    Cliente para reglas de asociación.
-    Más adelante consumirá GET /market-basket.
+    Placeholder temporal.
+    Las recomendaciones MBA se consumen desde /recommend según segmento.
     """
 
-    return get_mock_market_basket()
+    return {
+        "rules": []
+    }

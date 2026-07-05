@@ -1,11 +1,8 @@
-# configuración general del proyecto
+import os
 
-# modo de datos:
-# "mock" usa archivos JSON locales
-# "api" consume la API real de FastAPI
-DATA_MODE = "mock"
+DATA_MODE = os.getenv("DATA_MODE", "api")
 
-# URL base de FastAPI
-# cuando Feli levante la API local, probablemente sea:
-# http://127.0.0.1:8000
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = os.getenv(
+    "API_BASE_URL",
+    "http://127.0.0.1:8000"
+)

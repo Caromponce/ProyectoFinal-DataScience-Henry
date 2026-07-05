@@ -1,0 +1,81 @@
+{
+  "total_users": 206209,
+  "total_products": 49688,
+  "total_interactions": 32434489,
+  "sparsity": 99.68,
+
+  "kmeans": {
+    "k": 2,
+    "silhouette": 0.3276,
+    "davies_bouldin": 1.1389
+  },
+
+  "recommendation_router": [
+    {
+      "segment": "Clientes sin historial",
+      "strategy": "Popularity Model",
+      "objective": "Resolver el problema de cold start."
+    },
+    {
+      "segment": "Clientes Ocasionales",
+      "strategy": "Item-Item Collaborative Filtering",
+      "objective": "Recomendar productos similares según historial."
+    },
+    {
+      "segment": "Clientes Leales",
+      "strategy": "Reorder Prediction",
+      "objective": "Predecir la recompra de productos habituales."
+    },
+    {
+      "segment": "Canasta grande",
+      "strategy": "Market Basket Analysis",
+      "objective": "Recomendar productos complementarios al carrito."
+    }
+  ],
+
+  "models": [
+    {
+      "model": "Popularity",
+      "use_case": "Cold Start",
+      "main_metric": "-",
+      "value": null,
+      "notes": "Modelo baseline para usuarios sin historial."
+    },
+    {
+      "model": "Item-Item Collaborative Filtering",
+      "use_case": "Clientes Ocasionales",
+      "main_metric": "Recall@10",
+      "value": 0.0204,
+      "coverage": 0.0390,
+      "f1": 0.0203,
+      "notes": "Coverage@10 = 3.90% del catálogo."
+    },
+    {
+      "model": "Market Basket Analysis",
+      "use_case": "Canasta grande",
+      "main_metric": "Reglas",
+      "value": 1803,
+      "avg_lift": null,
+      "notes": "1803 reglas de asociación a nivel producto."
+    },
+    {
+      "model": "Market Basket Analysis (Aisles)",
+      "use_case": "Recomendación por pasillos",
+      "main_metric": "Reglas",
+      "value": 11021,
+      "avg_lift": null,
+      "notes": "11021 reglas de asociación a nivel pasillo."
+    },
+    {
+      "model": "Reorder Prediction (XGBoost)",
+      "use_case": "Clientes Leales",
+      "main_metric": "PR-AUC",
+      "value": 0.4218,
+      "precision": 0.2516,
+      "recall": 0.7502,
+      "f1": 0.3768,
+      "best_threshold": 0.7205,
+      "notes": "Modelo ganador entre Random Forest, LightGBM, CatBoost y XGBoost."
+    }
+  ]
+}
