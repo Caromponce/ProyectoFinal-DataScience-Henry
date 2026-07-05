@@ -2,38 +2,37 @@ import os
 import gdown
 
 MODELS_DIR = "models"
-DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1-ur31Pnxf2wqxTskS9GSKHLeJWGBAEOT?usp=sharing"
 
-EXPECTED_MODELS = [
-    "cf_item_item_model.joblib",
-    "kmeans_model.joblib",
-    "mba_aisle_recommender.joblib",
-    "mba_prod_recommender.joblib",
-    "popularity_model.joblib",
-    "reorder_model.joblib",
-]
+MODELS = {
+    "cf_item_item_model.joblib": "1FrBsKOxrf5YScofFkHCC62GD9gUspch3",
+    "kmeans_model.joblib": "1yHXnS5oIt5D0fYc5vo3UGdcmJSnySm2J",
+    "mba_aisle_recommender.joblib": "1bi0bKFTa1AtSIEYOGne6Mp15pBygKphU",
+    "mba_prod_recommender.joblib": "1HQBbQNVqMq82RiB25w3hE3Lp2iNKnU5N",
+    "popularity_model.joblib": "1IX93S1F1Z8LSZgQC3vrAqcQtee1ogo-Y",
+    "reorder_model.joblib": "1cta7FL29qzUsh2-FRtL1SehNjRisu-vU",
+}
 
 os.makedirs(MODELS_DIR, exist_ok=True)
 
-missing_models = [
-    model for model in EXPECTED_MODELS
-    if not os.path.exists(os.path.join(MODELS_DIR, model))
-]
+for filename, file_id in MODELS.items():
+    output_path = os.path.join(MODELS_DIR, filename)
 
-if missing_models:
-    print("Descargando modelos desde Google Drive...")
-    gdown.download_folder(
-        DRIVE_FOLDER_URL,
-        output=MODELS_DIR,
+    if os.path.exists(output_path):
+        print(f"Modelo ya existente: {filename}")
+        continue
+
+    print(f"Descargando modelo: {filename}")
+
+    url = f"https://drive.google.com/uc?id={file_id}"
+
+    gdown.download(
+        url,
+        output_path,
         quiet=False,
-        use_cookies=False
+        fuzzy=True
     )
-else:
-    print("Los modelos ya existen. No se descargan nuevamente.")
 
-for model in EXPECTED_MODELS:
-    path = os.path.join(MODELS_DIR, model)
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"No se encontró el modelo requerido: {path}")
+    if not os.path.exists(output_path):
+        raise FileNotFoundError(f"No se pudo descargar: {filename}")
 
-print("Modelos disponibles correctamente.")
+print("Todos los modelos están disponibles correctamente.")
