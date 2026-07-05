@@ -1,97 +1,392 @@
-# Proyecto Final Data Science - Henry
+# 🛒 Sistema Inteligente de Recomendación de Productos
 
-Análisis y modelado sobre el dataset público de [Instacart Market Basket Analysis](https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis): segmentación de clientes, sistemas de recomendación de productos y pasillos, y predicción de recompra (reorder).
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker)
+![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-F7931E?logo=scikitlearn)
+![XGBoost](https://img.shields.io/badge/XGBoost-ML-success)
+![Render](https://img.shields.io/badge/Deploy-Render-46E3B7)
 
+Proyecto Final de la carrera **Data Science** de **Henry**.
 
-## Estructura del repositorio
+Desarrollado por **Data Horizon**.
+
+---
+
+# 📌 Descripción
+
+Este proyecto implementa un **Sistema Inteligente de Recomendación de Productos** utilizando el dataset público **Instacart Market Basket Analysis**.
+
+A diferencia de un recomendador tradicional basado en un único algoritmo, la solución implementa una **arquitectura híbrida**, donde múltiples modelos de Machine Learning trabajan de manera coordinada.
+
+El sistema analiza el comportamiento del usuario, determina automáticamente su segmento y selecciona la estrategia de recomendación más adecuada para cada caso.
+
+Entre las técnicas implementadas se incluyen:
+
+- Segmentación de usuarios mediante K-Means.
+- Recomendación por Popularidad (Cold Start).
+- Filtrado Colaborativo Item-Item.
+- Market Basket Analysis mediante FP-Growth.
+- Predicción de recompra utilizando XGBoost.
+
+Todo el sistema se encuentra desplegado en la nube mediante **Render**, utilizando **Docker**, **FastAPI** y **Streamlit**.
+
+---
+
+# 🌐 Demo
+
+### Aplicación
+
+https://proyectofinal-datascience-henry.onrender.com
+
+### Repositorio
+
+https://github.com/Caromponce/ProyectoFinal-DataScience-Henry
+
+---
+
+# 🏗 Arquitectura
 
 ```
+
+Usuario
+
+↓
+
+Streamlit
+
+↓
+
+FastAPI
+
+↓
+
+Segmentación (KMeans)
+
+↓
+
+Selección automática del modelo
+
+↓
+
+Popularity
+Item-Item CF
+Market Basket Analysis
+Reorder Prediction
+
+↓
+
+Respuesta
+
+```
+
+---
+
+# ⚙ Stack Tecnológico
+
+## Lenguajes
+
+- Python
+- Pandas
+- NumPy
+
+## Machine Learning
+
+- Scikit-Learn
+- XGBoost
+- LightGBM
+- CatBoost
+- mlxtend
+
+## Backend
+
+- FastAPI
+- Uvicorn
+
+## Frontend
+
+- Streamlit
+
+## DevOps
+
+- Docker
+- Render
+- GitHub
+- Google Drive
+
+---
+
+# 📂 Estructura del proyecto
+
+```
+
 ProyectoFinal-DataScience-Henry/
-├── data/
-│   ├── raw/instacart/        # CSVs originales de Kaggle (no versionados, ver "Descargar el dataset")
-│   └── processed/            # Datos intermedios y de salida (catálogos, reglas, métricas en .json/.csv)
-├── notebooks/                # Los 10 notebooks del pipeline, numerados en orden de ejecución
-├── src/                      # Módulos .py productivos (uno por modelo, listos para importar)
-├── models/                   # Artefactos .joblib entrenados 
-├── test/                     # Notebook de smoke test de los módulos de src/
-├── requirements.txt          # Dependencias del proyecto
+
+├── api/
+├── app/
+├── assets/
+├── docs/
+├── notebooks/
+├── src/
+├── Dockerfile
+├── download_models.py
+├── start.sh
+├── requirements.txt
 └── README.md
+
 ```
 
-## Configuración inicial
+---
 
-### 1. Clonar el repositorio
+# 📊 Dataset
+
+El proyecto utiliza el dataset público **Instacart Market Basket Analysis**, que contiene el historial anonimizado de compras realizadas por más de **206.000 usuarios**.
+
+Está compuesto por más de **32 millones de interacciones** distribuidas en seis tablas relacionadas.
+
+| Tabla | Filas |
+|--------|-------:|
+| orders.csv | 3.421.083 |
+| products.csv | 49.688 |
+| aisles.csv | 134 |
+| departments.csv | 21 |
+| order_products__prior.csv | 32.434.489 |
+| order_products__train.csv | 1.384.617 |
+
+Durante el análisis exploratorio se identificó una matriz Usuario–Producto altamente dispersa (99.68% de sparsity), una tasa de recompra cercana al 59% y una distribución de productos con comportamiento Long Tail.
+
+---
+
+# 🤖 Modelos Implementados
+
+## Popularity Baseline
+
+**Objetivo**
+
+Resolver el problema de Cold Start para usuarios sin historial.
+
+**Entrada**
+
+Usuario nuevo.
+
+**Salida**
+
+Productos más populares.
+
+---
+
+## Segmentación de Usuarios (K-Means)
+
+El modelo agrupa automáticamente los usuarios según su comportamiento de compra.
+
+Segmentos obtenidos:
+
+- Clientes sin historial
+- Clientes Ocasionales
+- Clientes Leales
+- Clientes de Canasta Grande
+
+Este modelo **no genera recomendaciones**, sino que determina qué estrategia utilizar posteriormente.
+
+---
+
+## Item-Item Collaborative Filtering
+
+Recomienda productos similares según el historial de compras del usuario mediante similitud coseno.
+
+Se utiliza para usuarios con historial reducido.
+
+---
+
+## Market Basket Analysis
+
+Implementado mediante FP-Growth.
+
+Incluye dos modelos independientes:
+
+- Recomendación de productos complementarios.
+- Recomendación de pasillos relacionados.
+
+---
+
+## Reorder Prediction
+
+Modelo supervisado encargado de predecir qué productos volverá a comprar un usuario frecuente.
+
+Durante la etapa experimental se evaluaron:
+
+- Random Forest
+- LightGBM
+- CatBoost
+- XGBoost
+
+Finalmente se seleccionó **XGBoost** por obtener el mejor desempeño.
+
+---
+
+# 🔄 Flujo de Recomendación
+
+```
+
+Usuario
+
+↓
+
+Consulta API
+
+↓
+
+Segmentación
+
+↓
+
+Selección de estrategia
+
+↓
+
+Carga del modelo correspondiente
+
+↓
+
+Generación de recomendaciones
+
+↓
+
+Respuesta JSON
+
+```
+
+---
+
+# 🚀 API REST
+
+La aplicación expone los siguientes endpoints:
+
+| Método | Endpoint | Descripción |
+|---------|----------|-------------|
+| GET | / | Estado del servicio |
+| GET | /health | Health Check |
+| GET | /segment/{user_id} | Segmento del usuario |
+| GET | /metrics | Métricas del sistema |
+| POST | /recommend | Generar recomendaciones |
+
+---
+
+# 🐳 Deploy
+
+La aplicación se encuentra desplegada en **Render** utilizando **Docker**.
+
+Los modelos entrenados no forman parte del repositorio debido a su tamaño.
+
+Durante el inicio del contenedor se descargan automáticamente desde Google Drive mediante:
+
+```
+
+download_models.py
+
+```
+
+Posteriormente se inicia:
+
+- FastAPI
+- Streamlit
+
+Ambos procesos conviven dentro del mismo contenedor utilizando el script:
+
+```
+
+start.sh
+
+```
+
+---
+
+# 💻 Instalación Local
 
 ```bash
 git clone https://github.com/Caromponce/ProyectoFinal-DataScience-Henry.git
+
 cd ProyectoFinal-DataScience-Henry
-```
 
-### 2. Crear entorno e instalar dependencias
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate      # Windows
 pip install -r requirements.txt
+
+python download_models.py
+
+bash start.sh
 ```
 
-### 3. Descargar el dataset
+---
 
-El dataset **no está incluido** en el repositorio por su tamaño (los `.csv`/`.parquet`/`.npz` están en `.gitignore`). Descargalo desde [Kaggle — Instacart Market Basket Analysis](https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis) y colocá los archivos en `data/raw/instacart/`:
+# 📈 Resultados
 
-```
-data/
-└── raw/
-    └── instacart/
-        ├── aisles.csv
-        ├── departments.csv
-        ├── orders.csv
-        ├── products.csv
-        ├── order_products__prior.csv
-        └── order_products__train.csv
-```
+El sistema implementa una arquitectura híbrida basada en cinco estrategias complementarias.
 
-### 4. Ejecutar el pipeline
-Ejecutar los notebooks 01 a 10 en orden.
+| Modelo | Estado |
+|----------|---------|
+| Popularity | Producción |
+| K-Means | Producción |
+| Item-Item CF | Producción |
+| MBA Producto | Producción |
+| MBA Pasillos | Producción |
+| Reorder Prediction | Producción |
 
+---
 
-## El dataset
+# 🔮 Futuras Mejoras
 
-Historial real (anonimizado) de compras online de supermercado, distribuido en 6 tablas relacionadas por IDs de usuario/pedido/producto:
+- Recomendaciones híbridas con aprendizaje online.
+- Actualización incremental de modelos.
+- Incorporación de métricas online.
+- Monitoreo de modelos mediante MLflow.
+- Integración con almacenamiento cloud dedicado.
 
-| Tabla | Filas | Descripción |
-|-------|------:|-------------|
-| `orders.csv` | 3.421.083 | Pedidos de 206.209 usuarios, con día de la semana, hora y días desde el pedido anterior. |
-| `products.csv` | 49.688 | Catálogo de productos, cada uno asociado a un pasillo (aisle) y un departamento. |
-| `aisles.csv` | 134 | Pasillos/categorías finas de producto. |
-| `departments.csv` | 21 | Departamentos, categorías más generales. |
-| `order_products__prior.csv` | 32.434.489 | Detalle producto a producto de los pedidos históricos ("prior") de cada usuario. |
-| `order_products__train.csv` | 1.384.617 | Detalle del último pedido de cada usuario, usado como etiqueta para entrenar/evaluar. |
+---
 
-Puntos relevantes detectados en el análisis exploratorio (notebooks 01-02): la matriz usuario-producto es muy dispersa (sparsity 99.68%), el 58.97% de las compras son recompras, y la distribución de compras por producto sigue un patrón de "long tail" (pocos productos muy vendidos y una cola larga de productos poco vendidos).
+# 👥 Integrantes
 
-## Modelos implementados
+## Data Horizon
 
-Cada modelo responde a una pregunta de negocio distinta y se guarda como artefacto `.joblib` reutilizable en `models/`, con su módulo importable equivalente en `src/`.
+- Carolina Ponce
+- Félix Augusto Fernández González
+- Yael Authier
 
-| # | Notebook | Modelo | Descripción |
-|---|----------|--------|-------------|
-| 05 | `05_Clustering_Segmentacion.ipynb` | **K-Means (segmentación)** | Agrupa usuarios en perfiles de comportamiento de compra (cantidad de pedidos, tamaño de carrito, tasa de recompra, frecuencia) sin etiquetas previas. Resultado: 2 clusters — "Clientes Ocasionales" (56.2%) y "Clientes Leales o frecuentes" (43.8%), Silhouette Score 0.3276. |
-| 06 | `06_Popularidad_Baseline.ipynb` | **Popularidad (baseline)** | Recomendador más simple posible: rankea productos por cantidad total de compras históricas. Sirve como piso de comparación y para el problema de cold-start (usuarios sin historial). |
-| 07 | `07_Market_Basket_Analysis.ipynb` | **Market Basket Analysis — Producto** | Usa FP-Growth (`mlxtend`) para encontrar reglas de asociación entre productos ("si comprás A, solés comprar B") mediante soporte, confianza y lift. Genera ~1.800 reglas de cross-selling a nivel producto. |
-| 08 | `08_Market_Basket_Analysis_Aisles.ipynb` | **Market Basket Analysis — Pasillo** | Misma técnica (FP-Growth) aplicada sobre los 134 pasillos en vez de productos individuales, para detectar relaciones entre categorías más amplias. Genera ~11.000 reglas. |
-| 09 | `09_Item_Item_Cosine.ipynb` | **Filtrado colaborativo Item-Item (similitud coseno)** | Calcula similitud coseno entre productos a partir de la matriz usuario-producto, para recomendar productos "parecidos" según qué usuarios los compran juntos. Evaluado con Precision/Recall/MAP y coherencia de categoría (15.6x mejor que el azar). |
-| 10 | `10_Reorder_Prediction.ipynb` | **Predicción de recompra (Reorder Prediction)** | Clasificación binaria supervisada: dado un usuario y un producto que ya compró, predice si lo va a volver a comprar en su próximo pedido. Compara XGBoost, LightGBM, CatBoost y RandomForest; gana **XGBoost** (PR-AUC 0.4218, Recall 0.75). |
+Proyecto Final — Henry Data Science
 
-## Módulos productivos (`src/`)
+# 📸 Capturas de la aplicación
 
-`src/` contiene la versión importable de cada modelo entrenado (05 a 10), pensada para consumirse desde otro código sin depender de los notebooks ni de los CSV crudos: cada módulo carga su artefacto `.joblib` de `models/` y expone una clase simple con un método de predicción o recomendación.
+## Inicio
 
-```python
-from popularity_recommender import PopularityRecommender
+<p align="center">
+  <img src="assets/inicio.jpg" width="900">
+</p>
 
-model = PopularityRecommender.load()
-model.recommend(10)
-```
+## Recomendador de productos
 
-`test/test_recommenders.ipynb` sirve como ejemplo de uso y smoke test de los 6 módulos.
+<p align="center">
+  <img src="assets/Recomendador.jpg" width="900">
+</p>
+
+## Segmentación de usuarios
+
+<p align="center">
+  <img src="assets/segmentacion.jpg" width="900">
+</p>
+
+## Market Basket Analysis
+
+<p align="center">
+  <img src="assets/Market.jpg" width="900">
+</p>
+
+## KPIs del sistema
+
+<p align="center">
+  <img src="assets/kpi.jpg" width="900">
+</p>
+
+## Arquitectura del sistema
+
+<p align="center">
+  <img src="assets/arquitectura.jpg" width="900">
+</p>
