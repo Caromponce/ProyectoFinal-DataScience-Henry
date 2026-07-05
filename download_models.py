@@ -26,10 +26,9 @@ for filename, file_id in MODELS.items():
     url = f"https://drive.google.com/uc?id={file_id}"
 
     gdown.download(
-        url,
-        output_path,
+        url=url,
+        output=output_path,
         quiet=False,
-        fuzzy=True
     )
 
     if not os.path.exists(output_path):
