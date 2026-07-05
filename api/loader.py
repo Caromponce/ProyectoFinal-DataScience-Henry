@@ -17,12 +17,48 @@ from reorder_predictor import ReorderPredictor
 
 class ModelLoader:
     def __init__(self):
-        self.segmenter = CustomerSegmenter.load()
-        self.popularity = PopularityRecommender.load()
-        self.mba_products = MBA_Prod_Recommender.load()
-        self.mba_aisles = MBA_Aisle_Recommender.load()
-        self.item_item = CFItemItemRecommender.load()
-        self.reorder = ReorderPredictor.load()
+        self._segmenter = None
+        self._popularity = None
+        self._mba_products = None
+        self._mba_aisles = None
+        self._item_item = None
+        self._reorder = None
+
+    @property
+    def segmenter(self):
+        if self._segmenter is None:
+            self._segmenter = CustomerSegmenter.load()
+        return self._segmenter
+
+    @property
+    def popularity(self):
+        if self._popularity is None:
+            self._popularity = PopularityRecommender.load()
+        return self._popularity
+
+    @property
+    def mba_products(self):
+        if self._mba_products is None:
+            self._mba_products = MBA_Prod_Recommender.load()
+        return self._mba_products
+
+    @property
+    def mba_aisles(self):
+        if self._mba_aisles is None:
+            self._mba_aisles = MBA_Aisle_Recommender.load()
+        return self._mba_aisles
+
+    @property
+    def item_item(self):
+        if self._item_item is None:
+            self._item_item = CFItemItemRecommender.load()
+        return self._item_item
+
+    @property
+    def reorder(self):
+        if self._reorder is None:
+            self._reorder = ReorderPredictor.load()
+        return self._reorder
 
 
 models = ModelLoader()
