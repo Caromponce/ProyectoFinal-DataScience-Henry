@@ -1,4 +1,5 @@
 import os
+import time
 import gdown
 
 MODELS_DIR = "models"
@@ -14,24 +15,37 @@ MODELS = {
 
 os.makedirs(MODELS_DIR, exist_ok=True)
 
-for filename, file_id in MODELS.items():
+def download_model(filename, file_id, retries=3):
     output_path = os.path.join(MODELS_DIR, filename)
 
-    if os.path.exists(output_path):
+    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
         print(f"Modelo ya existente: {filename}")
-        continue
-
-    print(f"Descargando modelo: {filename}")
+        return
 
     url = f"https://drive.google.com/uc?id={file_id}"
 
-    gdown.download(
-        url=url,
-        output=output_path,
-        quiet=False,
-    )
+    for attempt in range(1, retries + 1):
+        try:
+            print(f"Descargando modelo: {filename} | intento {attempt}/{retries}")
 
-    if not os.path.exists(output_path):
-        raise FileNotFoundError(f"No se pudo descargar: {filename}")
+            gdown.download(
+                url=url,
+                output=output_path,
+                quiet=False,
+            )
+
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                print(f"Modelo descargado correctamente: {filename}")
+                return
+
+        except Exception as e:
+            print(f"Error descargando {filename}: {e}")
+
+        time.sleep(5)
+
+    raise FileNotFoundError(f"No se pudo descargar el modelo requerido: {filename}")
+
+for filename, file_id in MODELS.items():
+    download_model(filename, file_id)
 
 print("Todos los modelos están disponibles correctamente.")
