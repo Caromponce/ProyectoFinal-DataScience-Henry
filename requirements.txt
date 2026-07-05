@@ -35,7 +35,7 @@ nest-asyncio2==1.7.2
 networkx==3.6.1
 numpy==2.4.6
 packaging>=20,<26
-pandas==3.0.3
+pandas>=2.3.3,<3
 pandas-stubs==3.0.3.260530
 parso==0.8.7
 pillow==12.2.0
