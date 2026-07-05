@@ -68,8 +68,6 @@ wcwidth==0.8.1
 xgboost==3.2.0
 zipp==4.1.0
 streamlit==1.46.1
-plotly
 gdown
 fastapi
 uvicorn
-xgboost
