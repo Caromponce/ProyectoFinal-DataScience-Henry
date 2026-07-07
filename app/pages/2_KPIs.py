@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 from src.styles import inject_css
@@ -121,7 +120,7 @@ st.divider()
 
 henry_tag("Performance")
 
-st.subheader("📈 Métricas comparables de desempeño")
+st.subheader("📈 Desempeño de modelos")
 
 models_df = pd.DataFrame(data["models"])
 
@@ -160,6 +159,7 @@ st.dataframe(
 
 st.divider()
 
+
 # ==========================
 # Explorador de modelos
 # ==========================
@@ -175,89 +175,26 @@ selected = performance_table[
     performance_table["Modelo"] == selected_model
 ].iloc[0]
 
-c1, c2, c3 = st.columns(3)
-
-with c1:
-    st.metric("Modelo", selected["Modelo"])
-
-with c2:
-    st.metric("Métrica principal", selected["Métrica principal"])
-
-with c3:
-    st.metric("Valor", selected["Valor"])
-
-st.info(
+st.markdown(
     f"""
-**Caso de uso**
-
-{selected["Caso de uso"]}
-
-**Descripción**
-
-{selected["Notas"]}
-"""
+    <div class="henry-card">
+        <h3>{selected["Modelo"]}</h3>
+        <p><strong>Caso de uso:</strong> {selected["Caso de uso"]}</p>
+        <p><strong>Métrica principal:</strong> {selected["Métrica principal"]}</p>
+        <p><strong>Valor:</strong> {selected["Valor"]}</p>
+        <p><strong>Descripción:</strong> {selected["Notas"]}</p>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
-st.divider()
-
-# ==========================
-# Comparación gráfica
-# ==========================
-
-chart_df = models_df[
-    models_df["value"].notna() &
-    (models_df["value"] < 1)
-].copy()
-
-if not chart_df.empty:
-
-    chart_df["value_pct"] = chart_df["value"] * 100
-
-    fig = px.bar(
-        chart_df,
-        x="model",
-        y="value_pct",
-        text=chart_df["value_pct"].round(2).astype(str) + "%",
-        color="model",
-        color_discrete_map={
-            "Item-Item Collaborative Filtering": "#7C3AED",
-            "Reorder Prediction (XGBoost)": "#F2E40C"
-        }
-    )
-
-    fig.update_traces(
-        textposition="outside",
-        marker_line_color="#1A1A1A",
-        marker_line_width=1
-    )
-
-    fig.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font=dict(
-            family="Inter",
-            color="#1A1A1A",
-            size=15
-        ),
-        xaxis_title="Modelo",
-        yaxis_title="Valor (%)",
-        showlegend=False,
-        margin=dict(l=20, r=20, t=30, b=20),
-        yaxis=dict(
-            range=[0, chart_df["value_pct"].max() * 1.18]
-        )
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
-
-    st.caption(
-        "El gráfico compara únicamente métricas porcentuales (Recall@10 y PR-AUC). "
-        "Los modelos de Market Basket Analysis se evalúan por cantidad de reglas generadas, "
-        "por lo que esa información se muestra en la tabla superior."
-    )
+st.info(
+    """
+    Algunos modelos se evalúan con métricas porcentuales, como Recall@10 o PR-AUC.
+    Los modelos de Market Basket Analysis se evalúan por cantidad y calidad de reglas
+    generadas, por eso se muestran dentro de la tabla comparativa.
+    """
+)
 
 st.divider()
 

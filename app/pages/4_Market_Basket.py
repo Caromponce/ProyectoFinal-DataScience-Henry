@@ -214,17 +214,14 @@ try:
             zip(products_df["product_name"], products_df["product_id"])
         )
 
-        selected_names = st.multiselect(
-            "Productos con reglas disponibles",
+        selected_name = st.selectbox(
+            "Producto con reglas disponibles",
             options=products_df["product_name"].tolist(),
-            default=products_df["product_name"].head(1).tolist(),
             help="Se muestran solo productos que forman parte de reglas de asociación."
         )
 
-        selected_ids = [
-            int(product_name_to_id[name])
-            for name in selected_names
-        ]
+        selected_names = [selected_name]
+        selected_ids = [int(product_name_to_id[selected_name])]
 
         if selected_ids:
             result_df = recommend_products_with_metrics(

@@ -43,58 +43,6 @@ st.divider()
 
 
 # ==========================
-# Consulta por cliente
-# ==========================
-
-st.subheader("🔎 Consultar segmento por cliente")
-
-col_user, col_button = st.columns([2, 1])
-
-with col_user:
-    user_id = st.number_input(
-        "Número de cliente",
-        min_value=1,
-        value=3,
-        step=1
-    )
-
-with col_button:
-    st.write("")
-    st.write("")
-    consultar = st.button("Consultar API", use_container_width=True)
-
-if consultar:
-    try:
-        segment_response = get_user_segment(user_id)
-        segment_name = segment_response.get("segment", "Sin segmento")
-
-        if segment_name == "Clientes Leales o frecuentes":
-            segment_name = "Clientes Leales"
-
-        st.success(
-            f"El cliente {segment_response['user_id']} pertenece al segmento: "
-            f"**{segment_name}**"
-        )
-
-        strategy = segment_response.get("strategy", {})
-
-        if strategy:
-            st.info(
-                f"""
-                **Estrategia recomendada:** {strategy.get("strategy_name", "Sin dato")}
-
-                **Objetivo:** {strategy.get("objective", "Sin dato")}
-                """
-            )
-
-    except Exception as error:
-        st.error("No se pudo consultar la API.")
-        st.exception(error)
-
-st.divider()
-
-
-# ==========================
 # Datos de segmentos
 # ==========================
 
@@ -141,6 +89,56 @@ segments_df = pd.DataFrame(segments_data)
 
 
 # ==========================
+# Consulta por cliente
+# ==========================
+
+st.subheader("🔎 Consultar segmento por cliente")
+
+col_user, col_button = st.columns([2, 1])
+
+with col_user:
+    user_id = st.number_input(
+        "Número de cliente",
+        min_value=1,
+        value=3,
+        step=1
+    )
+
+with col_button:
+    st.write("")
+    st.write("")
+    consultar = st.button("Consultar API", use_container_width=True)
+
+if consultar:
+    try:
+        segment_response = get_user_segment(user_id)
+        segment_name = segment_response.get("segment", "Sin segmento")
+
+        if segment_name == "Clientes Leales o frecuentes":
+            segment_name = "Clientes Leales"
+
+        strategy = segment_response.get("strategy", {})
+
+        st.markdown(
+            f"""
+            <div class="henry-card">
+                <h3>Cliente {segment_response["user_id"]}</h3>
+                <p><strong>Segmento detectado:</strong> {segment_name}</p>
+                <p><strong>Estrategia recomendada:</strong> {strategy.get("strategy_name", "Sin dato")}</p>
+                <p><strong>Objetivo:</strong> {strategy.get("objective", "Sin dato")}</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    except Exception as error:
+        st.error("No se pudo consultar la API.")
+        st.exception(error)
+
+st.divider()
+
+
+# ==========================
 # Explorador interactivo
 # ==========================
 
@@ -148,43 +146,39 @@ st.subheader("🔎 Explorador interactivo de segmentos")
 
 selected_segment = st.selectbox(
     "Seleccioná un segmento",
-    segments_df["segment"].tolist()
+    segments_df["segment"].tolist(),
+    index=1
 )
 
 selected_row = segments_df[
     segments_df["segment"] == selected_segment
 ].iloc[0]
 
-s1, s2, s3, s4 = st.columns(4)
+users_value = (
+    "-"
+    if pd.isna(selected_row["users"])
+    else f"{int(selected_row['users']):,}".replace(",", ".")
+)
 
-with s1:
-    st.metric("Segmento", selected_row["segment"])
+percentage_value = (
+    "Regla de negocio"
+    if pd.isna(selected_row["percentage"])
+    else f"{selected_row['percentage']}%"
+)
 
-with s2:
-    st.metric(
-        "Usuarios",
-        "-"
-        if pd.isna(selected_row["users"])
-        else f"{int(selected_row['users']):,}".replace(",", ".")
-    )
-
-with s3:
-    st.metric(
-        "Participación",
-        "Regla"
-        if pd.isna(selected_row["percentage"])
-        else f"{selected_row['percentage']}%"
-    )
-
-with s4:
-    st.metric("Modelo", selected_row["strategy"])
-
-st.info(
+st.markdown(
     f"""
-    **Pedidos promedio:** {selected_row["orders_avg"]}  
-    **Tasa de recompra:** {selected_row["reorder_rate"]}  
-    **Carrito promedio:** {selected_row["basket_avg"]}
-    """
+    <div class="henry-card">
+        <h3>{selected_row["segment"]}</h3>
+        <p><strong>Clientes:</strong> {users_value}</p>
+        <p><strong>Participación:</strong> {percentage_value}</p>
+        <p><strong>Modelo recomendado:</strong> {selected_row["strategy"]}</p>
+        <p><strong>Pedidos promedio:</strong> {selected_row["orders_avg"]}</p>
+        <p><strong>Tasa de recompra:</strong> {selected_row["reorder_rate"]}</p>
+        <p><strong>Carrito promedio:</strong> {selected_row["basket_avg"]}</p>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
 st.divider()
@@ -213,11 +207,16 @@ for i, row in segments_df.iterrows():
             else "Regla"
         )
 
-        st.metric(
-            label=f"{colors[row['segment']]} {row['segment']}",
-            value=value
+        st.markdown(
+            f"""
+            <div class="henry-card">
+                <h3>{colors[row["segment"]]} {row["segment"]}</h3>
+                <p><strong>Participación:</strong> {value}</p>
+                <p><strong>Modelo:</strong> {row["strategy"]}</p>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
-        st.caption(row["strategy"])
 
 st.info(
     """

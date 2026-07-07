@@ -8,6 +8,7 @@ import streamlit as st
 # importar cliente de recomendaciones
 from src.api_client import get_recommendations
 from src.styles import inject_css
+from src.mba_prod_recommender import MBA_Prod_Recommender
 
 
 st.set_page_config(
@@ -25,9 +26,6 @@ USER_SEGMENTS_PATH = BASE_DIR / "data" / "processed" / "user_segments.csv"
 
 @st.cache_data
 def load_products_catalog():
-    """
-    Carga el catálogo de productos con product_id y product_name.
-    """
     if not PRODUCTS_CATALOG_PATH.exists():
         return pd.DataFrame(columns=["product_id", "product_name"])
 
@@ -41,9 +39,6 @@ def load_products_catalog():
 
 @st.cache_data
 def load_user_segments():
-    """
-    Carga los segmentos de clientes con user_id y segment.
-    """
     if not USER_SEGMENTS_PATH.exists():
         return pd.DataFrame(columns=["user_id", "segment"])
 
@@ -55,10 +50,43 @@ def load_user_segments():
     return users
 
 
+@st.cache_resource
+def load_mba_product_model():
+    return MBA_Prod_Recommender.load()
+
+
+@st.cache_data
+def get_valid_products_from_mba():
+    """
+    Devuelve solo productos que aparecen como antecedente en reglas MBA.
+    Esto evita mostrar miles de productos sin recomendación disponible.
+    """
+    try:
+        model = load_mba_product_model()
+
+        product_ids = set()
+
+        for antecedents in model.rules["antecedents"]:
+            product_ids.update(list(antecedents))
+
+        products = [
+            {
+                "product_id": int(product_id),
+                "product_name": model.id_to_name.get(
+                    product_id,
+                    f"Producto {product_id}"
+                )
+            }
+            for product_id in product_ids
+        ]
+
+        return pd.DataFrame(products).sort_values("product_name")
+
+    except Exception:
+        return pd.DataFrame(columns=["product_id", "product_name"])
+
+
 def get_client_segment(user_id, user_segments):
-    """
-    Busca el segmento asociado a un cliente.
-    """
     if user_segments.empty:
         return None
 
@@ -94,6 +122,7 @@ st.markdown(
 st.divider()
 
 products_catalog = load_products_catalog()
+valid_products = get_valid_products_from_mba()
 user_segments = load_user_segments()
 
 col_input, col_info = st.columns([1, 2])
@@ -108,6 +137,8 @@ with col_input:
     )
 
     detected_segment = None
+    selected_product_id = None
+    selected_product_name = None
 
     if client_type == "Cliente nuevo":
         st.info(
@@ -116,8 +147,8 @@ with col_input:
             basadas en popularidad.
             """
         )
+
         user_id = 999999999
-        selected_products = []
 
     else:
         user_id = st.number_input(
@@ -138,43 +169,72 @@ with col_input:
                 "La API intentará clasificarlo igualmente."
             )
 
-        st.subheader("🛒 Productos del carrito")
+        st.subheader("🛒 Producto de referencia")
 
-        if products_catalog.empty:
+        if not valid_products.empty:
+            product_options = valid_products["product_name"].tolist()
+
+            selected_product_name = st.selectbox(
+                "Seleccioná un producto con reglas disponibles",
+                options=product_options,
+                help="Se muestran solo productos que forman parte de reglas de asociación."
+            )
+
+            product_name_to_id = dict(
+                zip(
+                    valid_products["product_name"],
+                    valid_products["product_id"]
+                )
+            )
+
+            selected_product_id = int(product_name_to_id[selected_product_name])
+
+            st.caption(
+                "La interfaz muestra el nombre del producto, pero la API recibe internamente el product_id."
+            )
+
+        elif not products_catalog.empty:
             st.warning(
-                "No se encontró data/processed/products_catalog.csv. "
-                "Se usará el ingreso manual de IDs."
+                "No se pudieron cargar las reglas MBA. "
+                "Se muestra el catálogo general como respaldo."
             )
 
-            product_ids_text = st.text_input(
-                "Product IDs",
-                value="21903, 47209",
-                help="Ingresá IDs separados por coma. Ejemplo: 21903, 47209"
-            )
-
-            selected_products = []
-
-        else:
             product_options = products_catalog["product_name"].tolist()
 
-            default_products = [
-                product_name
-                for product_name in ["Organic Strawberries", "Organic Garlic"]
-                if product_name in product_options
-            ]
-
-            selected_products = st.multiselect(
-                "Seleccioná productos comprados",
-                options=product_options,
-                default=default_products,
-                help="Buscá productos por nombre. Internamente se envían sus product_id a la API."
+            selected_product_name = st.selectbox(
+                "Seleccioná un producto",
+                options=product_options
             )
+
+            product_name_to_id = dict(
+                zip(
+                    products_catalog["product_name"],
+                    products_catalog["product_id"]
+                )
+            )
+
+            selected_product_id = int(product_name_to_id[selected_product_name])
+
+        else:
+            st.warning(
+                "No se encontró catálogo de productos. "
+                "Se habilita ingreso manual de ID."
+            )
+
+            selected_product_id = st.number_input(
+                "Product ID",
+                min_value=1,
+                value=21903,
+                step=1
+            )
+
+            selected_product_name = f"Producto {selected_product_id}"
 
     n = st.slider(
         "Cantidad de recomendaciones",
         min_value=1,
         max_value=10,
-        value=10
+        value=5
     )
 
     generate = st.button("🚀 Generar recomendación", use_container_width=True)
@@ -197,9 +257,8 @@ with col_info:
 
     st.info(
         """
-        La interfaz muestra nombres de productos y segmentos de clientes para mejorar
-        la experiencia del usuario, pero la API sigue trabajando internamente con
-        `user_id` y `product_id`.
+        Para evitar recomendaciones vacías durante la demo, el selector muestra
+        productos que forman parte de reglas reales de asociación.
         """
     )
 
@@ -208,26 +267,8 @@ if generate:
     try:
         if client_type == "Cliente nuevo":
             product_ids = []
-
-        elif products_catalog.empty:
-            product_ids = [
-                int(product_id.strip())
-                for product_id in product_ids_text.split(",")
-                if product_id.strip()
-            ]
-
         else:
-            product_name_to_id = dict(
-                zip(
-                    products_catalog["product_name"],
-                    products_catalog["product_id"]
-                )
-            )
-
-            product_ids = [
-                int(product_name_to_id[product_name])
-                for product_name in selected_products
-            ]
+            product_ids = [int(selected_product_id)]
 
         response = get_recommendations(
             user_id=int(user_id),
@@ -252,11 +293,12 @@ if generate:
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.metric("👥 Segmento", response.get("segment", detected_segment or "Sin dato"))
+            st.markdown("**Segmento**")
+            st.success(response.get("segment", detected_segment or "Sin dato"))
 
         with col2:
-            st.metric(
-                "🧠 Estrategia",
+            st.markdown("**Estrategia**")
+            st.info(
                 strategy_display.get(
                     response.get("strategy"),
                     response.get("strategy", "Sin dato")
@@ -264,26 +306,27 @@ if generate:
             )
 
         with col3:
+            st.markdown("**Cliente**")
             if client_type == "Cliente nuevo":
-                st.metric("🆔 Cliente", "Nuevo")
+                st.warning("Nuevo")
             else:
-                st.metric("🆔 Cliente", response.get("user_id", user_id))
+                st.info(str(response.get("user_id", user_id)))
 
         st.info(
-            f"🎯 Objetivo: {response.get('objective', 'Sin objetivo disponible')}"
+            f"🎯 **Objetivo:** {response.get('objective', 'Sin objetivo disponible')}"
         )
 
-        if client_type == "Cliente existente" and product_ids:
+        if client_type == "Cliente existente":
             selected_df = pd.DataFrame(
-                {
-                    "product_id": product_ids,
-                    "product_name": selected_products
-                    if not products_catalog.empty
-                    else product_ids
-                }
+                [
+                    {
+                        "product_id": selected_product_id,
+                        "product_name": selected_product_name
+                    }
+                ]
             )
 
-            st.subheader("🛒 Productos utilizados como entrada")
+            st.subheader("🛒 Producto utilizado como entrada")
             st.dataframe(
                 selected_df,
                 use_container_width=True,
@@ -323,15 +366,12 @@ if generate:
                 El cliente **{response.get("user_id", user_id)}** pertenece al segmento
                 **{response.get("segment", detected_segment or "Sin segmento")}**.
 
-                Por ese motivo, el sistema seleccionó la estrategia
-                **{response.get("strategy_name", "Sin estrategia")}**, cuyo objetivo es:
+                A partir del producto de referencia **{selected_product_name}**, el sistema
+                seleccionó la estrategia **{response.get("strategy_name", "Sin estrategia")}**.
 
-                **{response.get("objective", "Sin objetivo disponible")}**
+                **Objetivo:** {response.get("objective", "Sin objetivo disponible")}
                 """
             )
-
-    except ValueError:
-        st.error("Revisá los Product IDs. Deben ser números separados por coma.")
 
     except requests.exceptions.ConnectionError:
         st.error(
@@ -340,3 +380,7 @@ if generate:
 
     except requests.exceptions.RequestException as error:
         st.error(f"Error al consultar la API: {error}")
+
+    except Exception as error:
+        st.error("Ocurrió un error al generar la recomendación.")
+        st.code(str(error))

@@ -162,6 +162,63 @@ def inject_css():
             margin-bottom:18px;
         }
 
+                /* ---------- TABLAS / DATAFRAMES ---------- */
+
+        [data-testid="stDataFrame"]{
+            border:1px solid #CFCFC8;
+            border-radius:12px;
+            overflow:hidden;
+        }
+
+        [data-testid="stDataFrame"] div{
+            color:#1A1A1A !important;
+        }
+
+        [data-testid="stDataFrame"] [role="columnheader"]{
+            background:#ECECE7 !important;
+            color:#1A1A1A !important;
+            font-weight:800 !important;
+        }
+
+        [data-testid="stDataFrame"] [role="gridcell"]{
+            background:#FFFFFF !important;
+            color:#1A1A1A !important;
+            border-color:#D8D8D2 !important;
+        }
+
+        /* ---------- INPUTS ---------- */
+
+        div[data-baseweb="select"] > div{
+            border-color:#B8B8B0 !important;
+        }
+
+        div[data-baseweb="select"] span{
+            color:#1A1A1A !important;
+        }
+
+        input{
+            color:#1A1A1A !important;
+        }
+
+        /* ---------- MÉTRICAS ---------- */
+
+        [data-testid="stMetric"]{
+            background:#FFFFFF;
+            border:1px solid #D8D8D2;
+            border-radius:14px;
+            padding:16px;
+        }
+
+        [data-testid="stMetricLabel"]{
+            color:#444444 !important;
+            font-weight:700 !important;
+        }
+
+        [data-testid="stMetricValue"]{
+            color:#1A1A1A !important;
+        }
+
+        
         </style>
         """,
         unsafe_allow_html=True
