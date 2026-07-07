@@ -171,29 +171,121 @@ selected_model = st.selectbox(
     performance_table["Modelo"].tolist()
 )
 
+
 selected = performance_table[
     performance_table["Modelo"] == selected_model
 ].iloc[0]
 
-st.markdown(
-    f"""
-    <div class="henry-card">
-        <h3>{selected["Modelo"]}</h3>
-        <p><strong>Caso de uso:</strong> {selected["Caso de uso"]}</p>
-        <p><strong>Métrica principal:</strong> {selected["Métrica principal"]}</p>
-        <p><strong>Valor:</strong> {selected["Valor"]}</p>
-        <p><strong>Descripción:</strong> {selected["Notas"]}</p>
-    </div>
-    """,
-    unsafe_allow_html=True
+MODEL_INFO = {
+
+    "Popularity Baseline": {
+        "descripcion":
+            "Modelo no personalizado utilizado para resolver el problema de cold-start. "
+            "Recomienda los productos con mayor popularidad histórica cuando un cliente aún no posee historial de compras.",
+
+        "porque":
+            "Fue incorporado para garantizar recomendaciones desde la primera interacción del usuario.",
+
+        "interpretacion":
+            "No requiere entrenamiento ni métricas tradicionales; actúa como línea base del sistema."
+    },
+
+    "Item-Item Collaborative Filtering": {
+        "descripcion":
+            "Calcula similitud entre productos utilizando el historial de compras de los clientes. "
+            "Cuando un usuario compra un producto, recomienda otros productos similares.",
+
+        "porque":
+            "Obtuvo Recall@10 = 0.0660, superando ampliamente al baseline (0.0460).",
+
+        "interpretacion":
+            "Recall@10 mide qué porcentaje de productos realmente comprados aparecen dentro de las primeras diez recomendaciones."
+    },
+
+    "Market Basket Analysis (Products)": {
+        "descripcion":
+            "Descubre asociaciones frecuentes entre productos mediante FP-Growth y reglas de asociación.",
+
+        "porque":
+            "Permite generar recomendaciones de cross-selling y creación de combos comerciales.",
+
+        "interpretacion":
+            "Su desempeño se evalúa mediante la cantidad y calidad de reglas generadas (Support, Confidence y Lift), no mediante Recall."
+    },
+
+    "Market Basket Analysis (Aisles)": {
+        "descripcion":
+            "Extiende Market Basket Analysis al nivel de pasillos para detectar categorías que suelen comprarse conjuntamente.",
+
+        "porque":
+            "Permite recomendar categorías completas y diseñar promociones cruzadas.",
+
+        "interpretacion":
+            "Se analiza mediante reglas de asociación entre categorías utilizando FP-Growth."
+    },
+
+    "Reorder Prediction (XGBoost)": {
+        "descripcion":
+            "Modelo supervisado entrenado para estimar la probabilidad de recompra de cada producto por cliente.",
+
+        "porque":
+            "Fue el modelo con mejor desempeño para clientes leales gracias a su capacidad para capturar patrones complejos.",
+
+        "interpretacion":
+            "La métrica principal es PR-AUC, especialmente adecuada para problemas con clases desbalanceadas."
+    }
+}
+
+info = MODEL_INFO.get(
+    selected["Modelo"],
+    {
+        "descripcion": selected["Notas"],
+        "porque": "-",
+        "interpretacion": "-"
+    }
 )
 
-st.info(
-    """
-    Algunos modelos se evalúan con métricas porcentuales, como Recall@10 o PR-AUC.
-    Los modelos de Market Basket Analysis se evalúan por cantidad y calidad de reglas
-    generadas, por eso se muestran dentro de la tabla comparativa.
-    """
+st.markdown(
+    f"""
+<div class="henry-card">
+
+### {selected["Modelo"]}
+
+**Caso de uso**
+
+{selected["Caso de uso"]}
+
+---
+
+**Métrica principal**
+
+{selected["Métrica principal"]}
+
+**Resultado obtenido**
+
+{selected["Valor"]}
+
+---
+
+**¿Qué hace este modelo?**
+
+{info["descripcion"]}
+
+---
+
+**¿Por qué fue seleccionado?**
+
+{info["porque"]}
+
+---
+
+**¿Cómo interpretar este resultado?**
+
+{info["interpretacion"]}
+
+</div>
+""",
+    unsafe_allow_html=True
 )
 
 st.divider()
