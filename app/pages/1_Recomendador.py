@@ -20,6 +20,7 @@ inject_css()
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 PRODUCTS_CATALOG_PATH = BASE_DIR / "data" / "processed" / "products_catalog.csv"
+USER_SEGMENTS_PATH = BASE_DIR / "data" / "processed" / "user_segments.csv"
 
 
 @st.cache_data
@@ -31,12 +32,42 @@ def load_products_catalog():
         return pd.DataFrame(columns=["product_id", "product_name"])
 
     products = pd.read_csv(PRODUCTS_CATALOG_PATH)
-
     products = products[["product_id", "product_name"]].dropna()
     products["product_id"] = products["product_id"].astype(int)
     products["product_name"] = products["product_name"].astype(str)
 
     return products.sort_values("product_name")
+
+
+@st.cache_data
+def load_user_segments():
+    """
+    Carga los segmentos de clientes con user_id y segment.
+    """
+    if not USER_SEGMENTS_PATH.exists():
+        return pd.DataFrame(columns=["user_id", "segment"])
+
+    users = pd.read_csv(USER_SEGMENTS_PATH)
+    users = users[["user_id", "segment"]].dropna()
+    users["user_id"] = users["user_id"].astype(int)
+    users["segment"] = users["segment"].astype(str)
+
+    return users
+
+
+def get_client_segment(user_id, user_segments):
+    """
+    Busca el segmento asociado a un cliente.
+    """
+    if user_segments.empty:
+        return None
+
+    match = user_segments[user_segments["user_id"] == int(user_id)]
+
+    if match.empty:
+        return None
+
+    return match.iloc[0]["segment"]
 
 
 with st.sidebar:
@@ -63,6 +94,7 @@ st.markdown(
 st.divider()
 
 products_catalog = load_products_catalog()
+user_segments = load_user_segments()
 
 col_input, col_info = st.columns([1, 2])
 
@@ -74,6 +106,8 @@ with col_input:
         options=["Cliente nuevo", "Cliente existente"],
         horizontal=False
     )
+
+    detected_segment = None
 
     if client_type == "Cliente nuevo":
         st.info(
@@ -89,10 +123,20 @@ with col_input:
         user_id = st.number_input(
             "Número de cliente",
             min_value=1,
-            value=1,
+            value=3,
             step=1,
             help="Ingresá el número de cliente existente."
         )
+
+        detected_segment = get_client_segment(user_id, user_segments)
+
+        if detected_segment:
+            st.success(f"Cliente encontrado: **{detected_segment}**")
+        else:
+            st.warning(
+                "No se encontró el cliente en user_segments.csv. "
+                "La API intentará clasificarlo igualmente."
+            )
 
         st.subheader("🛒 Productos del carrito")
 
@@ -153,8 +197,9 @@ with col_info:
 
     st.info(
         """
-        La interfaz muestra nombres de productos para mejorar la experiencia
-        del usuario, pero la API sigue trabajando internamente con `product_id`.
+        La interfaz muestra nombres de productos y segmentos de clientes para mejorar
+        la experiencia del usuario, pero la API sigue trabajando internamente con
+        `user_id` y `product_id`.
         """
     )
 
@@ -207,7 +252,7 @@ if generate:
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.metric("👥 Segmento", response.get("segment", "Sin dato"))
+            st.metric("👥 Segmento", response.get("segment", detected_segment or "Sin dato"))
 
         with col2:
             st.metric(
@@ -275,8 +320,8 @@ if generate:
         else:
             st.markdown(
                 f"""
-                El cliente **{response.get("user_id", user_id)}** fue clasificado como
-                **{response.get("segment", "Sin segmento")}**.
+                El cliente **{response.get("user_id", user_id)}** pertenece al segmento
+                **{response.get("segment", detected_segment or "Sin segmento")}**.
 
                 Por ese motivo, el sistema seleccionó la estrategia
                 **{response.get("strategy_name", "Sin estrategia")}**, cuyo objetivo es:

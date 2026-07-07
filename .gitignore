@@ -159,6 +159,11 @@ $RECYCLE.BIN/
 
 # Datasets
 data/**/*.csv
+
+# Catálogos necesarios para la interfaz
+!data/processed/products_catalog.csv
+!data/processed/user_segments.csv
+
 data/**/*.parquet
 data/**/*.npz
 data/raw/

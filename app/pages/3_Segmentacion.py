@@ -7,6 +7,7 @@ from src.api_client import get_user_segment
 from src.styles import inject_css
 from src.ui import henry_title, henry_tag
 
+
 st.set_page_config(
     page_title="Segmentación",
     page_icon="👥",
@@ -26,28 +27,34 @@ with st.sidebar:
     )
     st.divider()
 
+
 henry_tag("Clustering de usuarios")
 henry_title("Segmentación de Usuarios")
 
 st.markdown(
     """
     La segmentación combina un modelo **K-Means** con reglas de negocio para
-    clasificar a los usuarios según su comportamiento de compra y seleccionar
+    clasificar a los clientes según su comportamiento de compra y seleccionar
     la estrategia de recomendación más adecuada.
     """
 )
 
 st.divider()
 
-st.subheader("🔎 Consultar segmento por usuario")
+
+# ==========================
+# Consulta por cliente
+# ==========================
+
+st.subheader("🔎 Consultar segmento por cliente")
 
 col_user, col_button = st.columns([2, 1])
 
 with col_user:
     user_id = st.number_input(
-        "User ID",
+        "Número de cliente",
         min_value=1,
-        value=1,
+        value=3,
         step=1
     )
 
@@ -65,7 +72,7 @@ if consultar:
             segment_name = "Clientes Leales"
 
         st.success(
-            f"El usuario {segment_response['user_id']} pertenece al segmento: "
+            f"El cliente {segment_response['user_id']} pertenece al segmento: "
             f"**{segment_name}**"
         )
 
@@ -85,6 +92,11 @@ if consultar:
         st.exception(error)
 
 st.divider()
+
+
+# ==========================
+# Datos de segmentos
+# ==========================
 
 segments_data = [
     {
@@ -127,6 +139,61 @@ segments_data = [
 
 segments_df = pd.DataFrame(segments_data)
 
+
+# ==========================
+# Explorador interactivo
+# ==========================
+
+st.subheader("🔎 Explorador interactivo de segmentos")
+
+selected_segment = st.selectbox(
+    "Seleccioná un segmento",
+    segments_df["segment"].tolist()
+)
+
+selected_row = segments_df[
+    segments_df["segment"] == selected_segment
+].iloc[0]
+
+s1, s2, s3, s4 = st.columns(4)
+
+with s1:
+    st.metric("Segmento", selected_row["segment"])
+
+with s2:
+    st.metric(
+        "Usuarios",
+        "-"
+        if pd.isna(selected_row["users"])
+        else f"{int(selected_row['users']):,}".replace(",", ".")
+    )
+
+with s3:
+    st.metric(
+        "Participación",
+        "Regla"
+        if pd.isna(selected_row["percentage"])
+        else f"{selected_row['percentage']}%"
+    )
+
+with s4:
+    st.metric("Modelo", selected_row["strategy"])
+
+st.info(
+    f"""
+    **Pedidos promedio:** {selected_row["orders_avg"]}  
+    **Tasa de recompra:** {selected_row["reorder_rate"]}  
+    **Carrito promedio:** {selected_row["basket_avg"]}
+    """
+)
+
+st.divider()
+
+
+# ==========================
+# Segmentos funcionales
+# ==========================
+
 st.subheader("📌 Segmentos funcionales del sistema")
 
 cols = st.columns(4)
@@ -156,12 +223,17 @@ st.info(
     """
     El K-Means encontró dos grupos principales: **Clientes Ocasionales** y
     **Clientes Leales**. Además, el sistema incorpora reglas de negocio para
-    usuarios sin historial suficiente y para activar recomendaciones de
+    clientes sin historial suficiente y para activar recomendaciones de
     **Market Basket Analysis** cuando el carrito permite sugerir productos asociados.
     """
 )
 
 st.divider()
+
+
+# ==========================
+# Distribución
+# ==========================
 
 henry_tag("Distribución")
 
@@ -196,7 +268,7 @@ fig.update_layout(
         size=15
     ),
     xaxis_title="Segmento",
-    yaxis_title="Usuarios",
+    yaxis_title="Clientes",
     showlegend=False,
     margin=dict(l=20, r=20, t=30, b=20)
 )
@@ -205,6 +277,11 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 
+
+# ==========================
+# Detalle
+# ==========================
+
 henry_tag("Detalle")
 
 st.subheader("📋 Perfil de segmentos y reglas")
@@ -212,7 +289,7 @@ st.subheader("📋 Perfil de segmentos y reglas")
 table = segments_df.rename(
     columns={
         "segment": "Segmento",
-        "users": "Usuarios",
+        "users": "Clientes",
         "percentage": "%",
         "strategy": "Modelo recomendado",
         "orders_avg": "Pedidos promedio",
@@ -225,7 +302,7 @@ st.dataframe(
     table[
         [
             "Segmento",
-            "Usuarios",
+            "Clientes",
             "%",
             "Pedidos promedio",
             "Tasa de recompra",
@@ -239,6 +316,11 @@ st.dataframe(
 
 st.divider()
 
+
+# ==========================
+# Métricas del clustering
+# ==========================
+
 henry_tag("Métricas del clustering")
 
 c1, c2, c3 = st.columns(3)
@@ -249,13 +331,18 @@ c3.metric("Davies-Bouldin", "1.1389")
 
 st.divider()
 
+
+# ==========================
+# Interpretación
+# ==========================
+
 henry_tag("Interpretación")
 
 st.markdown(
     """
 ### 🧠 ¿Por qué segmentamos?
 
-En lugar de recomendar lo mismo a todos los usuarios, el sistema identifica
+En lugar de recomendar lo mismo a todos los clientes, el sistema identifica
 su comportamiento de compra y selecciona la estrategia más adecuada.
 
 - **Clientes sin historial** → Popularity Model

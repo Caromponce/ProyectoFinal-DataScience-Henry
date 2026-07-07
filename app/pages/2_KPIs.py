@@ -126,8 +126,13 @@ st.subheader("📈 Métricas comparables de desempeño")
 models_df = pd.DataFrame(data["models"])
 
 performance_df = models_df.copy()
+
 performance_df["Valor"] = performance_df["value"].apply(
-    lambda x: "-" if pd.isna(x) else f"{x:.4f}" if x < 1 else f"{int(x):,}".replace(",", ".")
+    lambda x: "-"
+    if pd.isna(x)
+    else f"{x:.4f}"
+    if x < 1
+    else f"{int(x):,}".replace(",", ".")
 )
 
 performance_table = performance_df.rename(
@@ -153,12 +158,59 @@ st.dataframe(
     hide_index=True
 )
 
-# Solo se grafican las métricas porcentuales comparables
+st.divider()
+
+# ==========================
+# Explorador de modelos
+# ==========================
+
+st.subheader("🔎 Explorador interactivo de modelos")
+
+selected_model = st.selectbox(
+    "Seleccioná un modelo",
+    performance_table["Modelo"].tolist()
+)
+
+selected = performance_table[
+    performance_table["Modelo"] == selected_model
+].iloc[0]
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.metric("Modelo", selected["Modelo"])
+
+with c2:
+    st.metric("Métrica principal", selected["Métrica principal"])
+
+with c3:
+    st.metric("Valor", selected["Valor"])
+
+st.info(
+    f"""
+**Caso de uso**
+
+{selected["Caso de uso"]}
+
+**Descripción**
+
+{selected["Notas"]}
+"""
+)
+
+st.divider()
+
+# ==========================
+# Comparación gráfica
+# ==========================
+
 chart_df = models_df[
-    models_df["value"].notna() & (models_df["value"] < 1)
+    models_df["value"].notna() &
+    (models_df["value"] < 1)
 ].copy()
 
 if not chart_df.empty:
+
     chart_df["value_pct"] = chart_df["value"] * 100
 
     fig = px.bar(
@@ -196,12 +248,15 @@ if not chart_df.empty:
         )
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
 
     st.caption(
         "El gráfico compara únicamente métricas porcentuales (Recall@10 y PR-AUC). "
-        "Los modelos de Market Basket Analysis se evalúan por la cantidad de reglas generadas, "
-        "por lo que esa información se presenta en la tabla superior."
+        "Los modelos de Market Basket Analysis se evalúan por cantidad de reglas generadas, "
+        "por lo que esa información se muestra en la tabla superior."
     )
 
 st.divider()
