@@ -97,7 +97,8 @@ with col_input:
     client_type = st.radio(
         "Seleccioná el escenario",
         options=["Cliente nuevo", "Cliente existente"],
-        horizontal=False
+        horizontal=False,
+        key="client_type_radio"
     )
 
     detected_segment = None
@@ -181,87 +182,6 @@ with col_input:
     )
 
     generate = st.button("🚀 Generar recomendación", use_container_width=True)
-
-with col_input:
-    st.subheader("👤 Tipo de cliente")
-
-    client_type = st.radio(
-        "Seleccioná el escenario",
-        options=["Cliente nuevo", "Cliente existente"],
-        horizontal=False
-    )
-
-    detected_segment = None
-    selected_product_id = None
-    selected_product_name = None
-    product_ids = []
-
-    if client_type == "Cliente nuevo":
-        st.success("Cliente nuevo / sin historial")
-        st.caption("Se utilizará Popularity Baseline.")
-        user_id = 999999999
-
-    else:
-        st.subheader("🔎 Cliente existente")
-
-        user_id = st.number_input(
-            "Número de cliente",
-            min_value=1,
-            value=3,
-            step=1,
-            help="Ingresá un cliente existente dentro del dataset."
-        )
-
-        detected_segment = get_client_segment(user_id, user_segments)
-
-        if detected_segment is None:
-            st.error(
-                "Ese número de cliente no está disponible en user_segments.csv. "
-                "Probá con un cliente existente."
-            )
-
-            if not user_segments.empty:
-                ejemplos = user_segments["user_id"].head(10).tolist()
-                st.caption(
-                    f"Ejemplos disponibles: {', '.join(map(str, ejemplos))}"
-                )
-
-        else:
-            st.success(f"Segmento detectado: **{detected_segment}**")
-
-            if detected_segment == "Clientes Ocasionales":
-                st.markdown("**Modelo seleccionado:** Item-Item Collaborative Filtering")
-
-                selected_product_name = st.selectbox(
-                    "Producto de referencia",
-                    options=list(DEMO_PRODUCTS.keys()),
-                    help="Productos validados para demostrar recomendaciones Item-Item."
-                )
-
-                selected_product_id = DEMO_PRODUCTS[selected_product_name]
-                product_ids = [selected_product_id]
-
-            elif detected_segment in ["Clientes Leales", "Clientes Leales o frecuentes"]:
-                st.markdown("**Modelo seleccionado:** Reorder Prediction")
-                st.caption(
-                    "Para clientes leales, el sistema recomienda según historial de recompra. "
-                    "No requiere seleccionar producto manualmente."
-                )
-                product_ids = []
-
-            else:
-                st.markdown("**Modelo seleccionado:** estrategia definida por la API")
-                product_ids = []
-
-    n = st.slider(
-        "Cantidad de recomendaciones",
-        min_value=1,
-        max_value=10,
-        value=5
-    )
-
-    generate = st.button("🚀 Generar recomendación", use_container_width=True)
-
 
 with col_info:
     st.subheader("🧠 Lógica del sistema")
@@ -394,7 +314,7 @@ if generate:
                     f"""
                     El cliente **{user_id}** pertenece al segmento **Clientes Ocasionales**.  
                     Para este perfil se utiliza **Item-Item Collaborative Filtering**, tomando
-                    como referencia el producto seleccionado: **{selected_product_name}**.
+como referencia     los productos seleccionados: **{", ".join(selected_products)}**.
                     """
                 )
 
