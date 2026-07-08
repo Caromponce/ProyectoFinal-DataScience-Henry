@@ -34,7 +34,7 @@ Entre las técnicas implementadas se incluyen:
 - Segmentación de usuarios mediante K-Means.
 - Recomendación por Popularidad (Cold Start).
 - Filtrado Colaborativo Item-Item.
-- Market Basket Analysis mediante FP-Growth.
+- Market Basket Analysis como módulo transversal de cross-selling mediante FP-Growth.
 - Predicción de recompra utilizando XGBoost.
 
 Todo el sistema se encuentra desplegado en la nube mediante **Render**, utilizando **Docker**, **FastAPI** y **Streamlit**.
@@ -56,52 +56,55 @@ https://github.com/Caromponce/ProyectoFinal-DataScience-Henry
 
 # 🏗️ Arquitectura del Sistema
 
-El sistema implementa una **arquitectura híbrida de recomendación**, donde la API selecciona automáticamente la estrategia más adecuada según el comportamiento del usuario y el contexto de compra.
+El proyecto implementa una **arquitectura híbrida de recomendación**, donde distintos modelos de Machine Learning trabajan de forma coordinada para ofrecer recomendaciones personalizadas según el perfil y el comportamiento de cada usuario.
 
-La solución integra múltiples modelos de Machine Learning especializados, orquestados mediante FastAPI y consumidos desde una interfaz desarrollada en Streamlit. Los modelos entrenados se descargan dinámicamente desde Google Drive al iniciar el contenedor Docker desplegado en Render.
+A diferencia de un sistema basado en un único algoritmo, la API selecciona automáticamente la estrategia de recomendación más adecuada mediante un flujo compuesto por dos etapas:
 
-<p align="center">
-  <img src="assets/architecture.png" alt="Arquitectura del Sistema" width="1000">
-</p>
+1. **Segmentación automática del usuario**, que identifica el tipo de cliente utilizando K-Means junto con reglas de negocio para detectar usuarios nuevos o sin historial suficiente.
+2. **Selección dinámica de la estrategia de recomendación**, asignando el modelo más apropiado para cada caso.
 
-# 📸 Capturas de la aplicación
+El flujo implementado es el siguiente:
 
-## Recomendador de productos
+```text
+Usuario
 
-<p align="center">
-  <img src="assets/Recomendador.jpg" width="900">
-</p>
+   │
+   ▼
+Segmentación automática
 
-## Segmentación de usuarios
+   │
+   ├── Usuario nuevo o sin historial
+   │        ▼
+   │  Popularity Baseline
+   │
+   ├── Cliente Ocasional
+   │        ▼
+   │  Item-Item Collaborative Filtering
+   │
+   └── Cliente Leal
+            ▼
+     Reorder Prediction (XGBoost)
 
-<p align="center">
-  <img src="assets/segmentacion.jpg" width="900">
-</p>
+            ▼
+   También te puede interesar...
+ (Market Basket Analysis)
+```
 
-## Market Basket Analysis
+El **Market Basket Analysis** funciona como una capa transversal de **cross-selling**, complementando las recomendaciones principales mediante productos frecuentemente comprados en conjunto.
 
-<p align="center">
-  <img src="assets/Market.jpg" width="900">
-</p>
-
-## KPIs del sistema
-
-<p align="center">
-  <img src="assets/kpi.jpg" width="900">
-</p>
-
+La solución integra **FastAPI** como backend, **Streamlit** para la interfaz de usuario y **Docker** para el despliegue. Los modelos entrenados se descargan dinámicamente desde Google Drive al iniciar el contenedor desplegado en Render.
 
 ---
 
 # ⚙ Stack Tecnológico
 
-## Lenguajes
+## Lenguajes y Análisis de Datos
 
 - Python
 - Pandas
 - NumPy
 
-## Machine Learning
+## Machine Learning y Experimentación
 
 - Scikit-Learn
 - XGBoost
@@ -191,7 +194,7 @@ Durante el análisis exploratorio se identificó una matriz Usuario–Producto a
 | Item-Item Collaborative Filtering | Filtrado colaborativo | Clientes ocasionales | ✅ |
 | Market Basket Analysis (Producto) | Reglas de asociación | Productos complementarios | ✅ |
 | Market Basket Analysis (Pasillos) | Reglas de asociación | Categorías relacionadas | ✅ |
-| Reorder Prediction (XGBoost) | Supervisado | Clientes frecuentes | ✅ |
+| Reorder Prediction (XGBoost) | Supervisado | Clientes leales | ✅ |
 
 ## Popularity Baseline
 
@@ -201,7 +204,7 @@ Resolver el problema de Cold Start para usuarios sin historial.
 
 **Entrada**
 
-Usuario nuevo.
+Usuarios nuevos o sin historial suficiente.
 
 **Salida**
 
@@ -211,16 +214,20 @@ Productos más populares.
 
 ## Segmentación de Usuarios (K-Means)
 
-El modelo agrupa automáticamente los usuarios según su comportamiento de compra.
+La primera etapa del sistema consiste en segmentar automáticamente a los usuarios según su comportamiento de compra. Para ello se utiliza un modelo de **K-Means**, complementado con reglas de negocio que permiten identificar casos donde no existe historial suficiente para aplicar técnicas de recomendación personalizadas.
 
-Segmentos obtenidos:
+Los segmentos considerados por el sistema son:
 
-- Clientes sin historial
-- Clientes Ocasionales
-- Clientes Leales
-- Clientes de Canasta Grande
+- **Usuarios nuevos** (regla de negocio)
+- **Usuarios sin historial suficiente** (regla de negocio)
+- **Clientes Ocasionales** (K-Means)
+- **Clientes Leales** (K-Means)
 
-Este modelo **no genera recomendaciones**, sino que determina qué estrategia utilizar posteriormente.
+La segmentación **no genera recomendaciones por sí misma**, sino que determina qué estrategia de recomendación utilizar en la siguiente etapa del flujo:
+
+- **Popularity Baseline** para usuarios nuevos o sin historial.
+- **Item-Item Collaborative Filtering** para clientes ocasionales.
+- **Reorder Prediction (XGBoost)** para clientes leales.
 
 ---
 
@@ -234,12 +241,14 @@ Se utiliza para usuarios con historial reducido.
 
 ## Market Basket Analysis
 
-Implementado mediante FP-Growth.
+El **Market Basket Analysis** fue implementado mediante el algoritmo **FP-Growth** para identificar patrones de compra y asociaciones frecuentes entre productos.
 
-Incluye dos modelos independientes:
+El sistema incluye dos modelos complementarios:
 
-- Recomendación de productos complementarios.
-- Recomendación de pasillos relacionados.
+- **Recomendación de productos**, que sugiere artículos frecuentemente comprados en conjunto.
+- **Recomendación de pasillos**, que identifica categorías relacionadas para facilitar la exploración de productos.
+
+A diferencia de los demás modelos, **Market Basket Analysis no determina la estrategia principal de recomendación**. Su función es complementar las recomendaciones generadas por el sistema mediante una capa transversal de **cross-selling**, presentada en la aplicación bajo la sección **"También te puede interesar..."**.
 
 ---
 
@@ -276,28 +285,28 @@ La aplicación expone los siguientes endpoints:
 
 La aplicación se encuentra desplegada en **Render** utilizando **Docker**.
 
-Los modelos entrenados no forman parte del repositorio debido a su tamaño.
+Los modelos entrenados no forman parte del repositorio debido a su tamaño. Durante el inicio del contenedor se descargan automáticamente desde Google Drive mediante:
 
-Durante el inicio del contenedor se descargan automáticamente desde Google Drive mediante:
-
-```
-
+```text
 download_models.py
-
 ```
 
-Posteriormente se inicia:
+Posteriormente se inician los siguientes servicios:
 
 - FastAPI
 - Streamlit
 
 Ambos procesos conviven dentro del mismo contenedor utilizando el script:
 
-```
-
+```text
 start.sh
-
 ```
+
+> **Nota sobre el despliegue**
+>
+> Debido a las limitaciones de memoria de la versión gratuita de Render, el modelo **Reorder Prediction (XGBoost)** no puede ejecutarse en producción sin superar los recursos disponibles del contenedor. Para la demostración online se implementó un mecanismo de *fallback*, que utiliza predicciones precalculadas generadas con el modelo entrenado y validado localmente.
+>
+> Esta limitación afecta únicamente al entorno de despliegue y no al desarrollo del proyecto. La arquitectura híbrida, el entrenamiento, la evaluación y la validación del modelo forman parte de la solución implementada.
 
 ---
 
@@ -319,21 +328,22 @@ bash start.sh
 
 # 📈 Resultados
 
-El sistema implementa una arquitectura híbrida basada en cinco estrategias complementarias.
+El sistema implementa una **arquitectura híbrida de recomendación**, donde la estrategia utilizada depende automáticamente del perfil y del historial de compras de cada usuario.
 
-| Estrategia | Segmento objetivo | Objetivo | Estado |
-|------------|-------------------|----------|:------:|
-| Popularity Baseline | Clientes sin historial | Resolver el problema de Cold Start | ✅ Producción |
-| Item-Item Collaborative Filtering | Clientes ocasionales | Recomendar productos similares según historial | ✅ Producción |
-| Market Basket Analysis | Carritos con múltiples productos | Recomendar productos complementarios | ✅ Producción |
-| Reorder Prediction (XGBoost) | Clientes leales | Predecir la recompra de productos | ✅ Producción |
+| Estrategia | ¿Cuándo se utiliza? | Objetivo | Estado |
+|------------|---------------------|----------|:------:|
+| Popularity Baseline | Usuarios nuevos o sin historial suficiente | Resolver el problema de Cold Start | ✅ Producción |
+| Item-Item Collaborative Filtering | Clientes ocasionales | Recomendar productos similares según el historial de compra | ✅ Producción |
+| Reorder Prediction (XGBoost) | Clientes leales | Predecir los productos con mayor probabilidad de recompra | ✅ Producción |
+| Market Basket Analysis | Como complemento de las recomendaciones principales | Sugerir productos frecuentemente comprados en conjunto (cross-selling) | ✅ Producción |
 
-> **Conclusión:** El principal valor del sistema no reside en un único modelo de Machine Learning, sino en una **arquitectura híbrida** que selecciona automáticamente la estrategia de recomendación más adecuada según el segmento del usuario y el contexto de compra.
+> **Conclusión:** El principal valor del sistema no reside en un único modelo de Machine Learning, sino en una **arquitectura híbrida** que combina segmentación, selección automática de estrategias y recomendaciones complementarias para ofrecer una experiencia personalizada según el contexto de cada usuario.
 
 ---
 
 # 🔮 Futuras Mejoras
 
+- Ejecución completa del modelo **Reorder Prediction (XGBoost)** en un entorno cloud con mayores recursos de memoria.
 - Recomendaciones híbridas con aprendizaje online.
 - Actualización incremental de modelos.
 - Incorporación de métricas online.
@@ -351,3 +361,11 @@ El sistema implementa una arquitectura híbrida basada en cinco estrategias comp
 | Carolina Ponce | Data Scientist |
 | Félix Augusto Fernández González | Data Scientist |
 | Yael Authier | Data Scientist |
+
+---
+
+## 📄 Licencia
+
+Este proyecto fue desarrollado con fines académicos como Proyecto Final del programa Henry Data Science Bootcamp.
+
+El dataset utilizado corresponde al desafío público **Instacart Market Basket Analysis**, disponible para investigación y aprendizaje.

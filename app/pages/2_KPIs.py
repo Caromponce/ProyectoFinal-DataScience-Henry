@@ -1,343 +1,516 @@
 # importar librerías
 import json
 from pathlib import Path
-
+ 
 import pandas as pd
 import streamlit as st
-
+ 
 from src.styles import inject_css
 from src.ui import henry_title, henry_tag
-
-
+ 
+ 
 st.set_page_config(
     page_title="KPIs",
     page_icon="📊",
     layout="wide"
 )
-
+ 
 inject_css()
-
+ 
 BASE_DIR = Path(__file__).resolve().parents[2]
 METRICS_PATH = BASE_DIR / "data" / "processed" / "dashboard_metrics.json"
-
-
+ 
+ 
 @st.cache_data
 def load_metrics():
+    """
+    Carga las métricas calculadas durante el entrenamiento/evaluación.
+    Si el archivo no existe o falta alguna clave, se devuelven valores seguros
+    para evitar que la página se rompa en Render.
+    """
+ 
+    default_data = {
+        "total_users": 0,
+        "total_products": 0,
+        "total_interactions": 0,
+        "sparsity": 0,
+        "kmeans": {
+            "k": 0,
+            "silhouette": 0,
+            "davies_bouldin": 0,
+        },
+        "models": [],
+    }
+ 
+    if not METRICS_PATH.exists():
+        return default_data
+ 
     with open(METRICS_PATH, "r", encoding="utf-8") as file:
-        return json.load(file)
-
-
-with st.sidebar:
-    st.image("assets/logo_data_horizon.png", width=120)
-
-
-henry_tag("Evaluación de modelos")
-henry_title("KPIs del Sistema")
-
-st.write(
+        data = json.load(file)
+ 
+    for key, value in default_data.items():
+        data.setdefault(key, value)
+ 
+    return data
+ 
+ 
+def format_number(value):
+    """Formatea números grandes con punto como separador de miles."""
+ 
+    try:
+        return f"{int(value):,}".replace(",", ".")
+    except Exception:
+        return "-"
+ 
+ 
+def format_metric_value(value):
+    """Formatea métricas para mostrarlas en tablas."""
+ 
+    if value is None or pd.isna(value):
+        return "-"
+ 
+    try:
+        value = float(value)
+    except Exception:
+        return str(value)
+ 
+    if value < 1:
+        return f"{value:.4f}"
+ 
+    return f"{int(value):,}".replace(",", ".")
+ 
+ 
+def normalize_model_name(model_name):
     """
-    El sistema implementa una arquitectura híbrida de recomendación:
-    la API selecciona automáticamente el modelo más adecuado según
-    el comportamiento del usuario y el contexto de compra.
+    Normaliza nombres porque el JSON puede tener nombres cortos
+    y la interfaz necesita nombres más claros para la demo.
     """
-)
-
-st.divider()
-
-data = load_metrics()
-
-
-# ==========================
-# KPIs generales
-# ==========================
-
-c1, c2, c3, c4 = st.columns(4)
-
-c1.metric("Usuarios", f"{data['total_users']:,}".replace(",", "."))
-c2.metric("Productos", f"{data['total_products']:,}".replace(",", "."))
-c3.metric("Interacciones", f"{data['total_interactions']:,}".replace(",", "."))
-c4.metric("Sparsity", f"{data['sparsity']:.2f}%")
-
-st.divider()
-
-
-# ==========================
-# Arquitectura del recomendador
-# ==========================
-
-henry_tag("Arquitectura híbrida")
-
-st.subheader("🧠 Estrategias de recomendación")
-
-router_df = pd.DataFrame(data["recommendation_router"])
-
-router_df = router_df.rename(
-    columns={
-        "segment": "Segmento / Caso de uso",
-        "strategy": "Modelo seleccionado",
-        "objective": "Objetivo"
+ 
+    model_name = str(model_name)
+ 
+    name_map = {
+        "Popularity": "Popularity Baseline",
+        "Popularity Model": "Popularity Baseline",
+        "Popularity Baseline": "Popularity Baseline",
+        "Item-Item Collaborative Filtering": "Item-Item Collaborative Filtering",
+        "Market Basket Analysis": "Market Basket Analysis (Products)",
+        "Market Basket Analysis (Products)": "Market Basket Analysis (Products)",
+        "Market Basket Analysis (Aisles)": "Market Basket Analysis (Aisles)",
+        "Reorder Prediction": "Reorder Prediction (XGBoost)",
+        "Reorder Prediction (XGBoost)": "Reorder Prediction (XGBoost)",
     }
-)
-
-st.dataframe(
-    router_df,
-    use_container_width=True,
-    hide_index=True
-)
-
-st.info(
-    """
-    El valor del sistema no está en elegir un único modelo ganador, sino en
-    seleccionar la estrategia correcta según el tipo de usuario y el carrito.
-    """
-)
-
-st.divider()
-
-
-# ==========================
-# Segmentación
-# ==========================
-
-henry_tag("Segmentación")
-
-st.subheader("👥 Métricas del modelo K-Means")
-
-kmeans = data["kmeans"]
-
-k1, k2, k3 = st.columns(3)
-
-k1.metric("Clusters", kmeans["k"])
-k2.metric("Silhouette Score", f"{kmeans['silhouette']:.4f}")
-k3.metric("Davies-Bouldin", f"{kmeans['davies_bouldin']:.4f}")
-
-st.divider()
-
-
-# ==========================
-# Performance de modelos
-# ==========================
-
-henry_tag("Performance")
-
-st.subheader("📈 Desempeño de modelos")
-
-models_df = pd.DataFrame(data["models"])
-
-performance_df = models_df.copy()
-
-performance_df["Valor"] = performance_df["value"].apply(
-    lambda x: "-"
-    if pd.isna(x)
-    else f"{x:.4f}"
-    if x < 1
-    else f"{int(x):,}".replace(",", ".")
-)
-
-performance_table = performance_df.rename(
-    columns={
-        "model": "Modelo",
-        "use_case": "Caso de uso",
-        "main_metric": "Métrica principal",
-        "notes": "Notas"
-    }
-)
-
-st.dataframe(
-    performance_table[
+ 
+    return name_map.get(model_name, model_name)
+ 
+ 
+def build_performance_table(models):
+    """Construye una tabla de performance robusta para la página."""
+ 
+    if not models:
+        return pd.DataFrame(
+            columns=[
+                "Modelo",
+                "Caso de uso",
+                "Métrica principal",
+                "Valor",
+                "Notas",
+                "Valor numérico",
+            ]
+        )
+ 
+    models_df = pd.DataFrame(models)
+ 
+    # Asegurar columnas esperadas aunque falten en el JSON.
+    for column in ["model", "use_case", "main_metric", "value", "notes"]:
+        if column not in models_df.columns:
+            models_df[column] = None
+ 
+    models_df["Modelo"] = models_df["model"].apply(normalize_model_name)
+    models_df["Caso de uso"] = models_df["use_case"].fillna("-")
+    models_df["Métrica principal"] = models_df["main_metric"].fillna("-")
+    models_df["Valor"] = models_df["value"].apply(format_metric_value)
+    models_df["Valor numérico"] = models_df["value"]
+    models_df["Notas"] = models_df["notes"].fillna("-")
+ 
+    return models_df[
         [
             "Modelo",
             "Caso de uso",
             "Métrica principal",
             "Valor",
-            "Notas"
+            "Notas",
+            "Valor numérico",
         ]
-    ],
-    use_container_width=True,
-    hide_index=True
+    ]
+ 
+ 
+MODEL_INFO = {
+    "Popularity Baseline": {
+        "caso_uso": "Clientes nuevos o sin historial",
+        "metrica": "No aplica",
+        "descripcion": (
+            "Modelo no personalizado utilizado para resolver el problema de cold start. "
+            "Recomienda los productos con mayor popularidad histórica cuando el cliente "
+            "todavía no posee historial suficiente."
+        ),
+        "porque": (
+            "Fue incorporado para garantizar que el sistema pueda recomendar desde la "
+            "primera interacción, incluso cuando no existe información previa del usuario."
+        ),
+        "interpretacion": (
+            "No se interpreta como un modelo predictivo personalizado. Funciona como una "
+            "línea base estable para usuarios nuevos o sin historial de compra."
+        ),
+    },
+    "Item-Item Collaborative Filtering": {
+        "caso_uso": "Clientes ocasionales",
+        "metrica": "Recall@10",
+        "descripcion": (
+            "Calcula similitud entre productos utilizando el historial de compras de los clientes. "
+            "Cuando se toma un producto como referencia, recomienda otros productos con patrones "
+            "de consumo similares."
+        ),
+        "porque": (
+            "Fue seleccionado para clientes ocasionales porque permite recomendar productos "
+            "relacionados aunque el historial individual del usuario sea limitado."
+        ),
+        "interpretacion": (
+            "Recall@10 indica qué proporción de productos realmente comprados aparece dentro "
+            "de las primeras diez recomendaciones del modelo."
+        ),
+    },
+    "Market Basket Analysis (Products)": {
+        "caso_uso": "Cross-selling / También te puede interesar",
+        "metrica": "Reglas de asociación",
+        "descripcion": (
+            "Identifica productos que suelen comprarse juntos dentro de un mismo carrito. "
+            "En la app se utiliza como módulo complementario bajo la sección "
+            "'También te puede interesar...'."
+        ),
+        "porque": (
+            "Fue seleccionado porque permite generar recomendaciones complementarias y "
+            "acciones comerciales orientadas a aumentar el ticket promedio."
+        ),
+        "interpretacion": (
+            "No se evalúa con Recall como los recomendadores personalizados. Se interpreta "
+            "mediante reglas de asociación, considerando soporte, confianza y lift."
+        ),
+    },
+    "Market Basket Analysis (Aisles)": {
+        "caso_uso": "Recomendación por pasillos / categorías",
+        "metrica": "Reglas de asociación",
+        "descripcion": (
+            "Extiende Market Basket Analysis al nivel de pasillos para detectar categorías "
+            "que suelen comprarse conjuntamente."
+        ),
+        "porque": (
+            "Permite recomendar categorías completas y diseñar promociones cruzadas por familia "
+            "de productos, no solamente por producto individual."
+        ),
+        "interpretacion": (
+            "Se interpreta mediante reglas de asociación entre categorías. Es útil para entender "
+            "relaciones de compra a nivel más agregado."
+        ),
+    },
+    "Reorder Prediction (XGBoost)": {
+        "caso_uso": "Clientes leales o frecuentes",
+        "metrica": "PR-AUC",
+        "descripcion": (
+            "Modelo supervisado entrenado para estimar la probabilidad de recompra de cada "
+            "producto por cliente. No busca productos nuevos desde cero: ordena productos "
+            "candidatos según probabilidad de recompra."
+        ),
+        "porque": (
+            "Fue seleccionado para clientes leales porque permite anticipar necesidades de "
+            "reposición y mejorar la experiencia del usuario frecuente."
+        ),
+        "interpretacion": (
+            "PR-AUC es adecuada para problemas de clasificación con clases desbalanceadas. "
+            "Un valor más alto indica mejor capacidad para separar productos que serán recomprados "
+            "de aquellos que no."
+        ),
+    },
+}
+ 
+ 
+with st.sidebar:
+    st.image("assets/logo_data_horizon.png", width=120)
+ 
+ 
+henry_tag("Evaluación de modelos")
+henry_title("KPIs del Sistema")
+ 
+st.write(
+    """
+    El sistema implementa una arquitectura híbrida de recomendación.
+    Primero identifica el tipo de cliente, luego selecciona la estrategia principal
+    y finalmente puede complementar la recomendación con productos asociados mediante
+    Market Basket Analysis.
+    """
 )
-
+ 
 st.divider()
-
-
+ 
+data = load_metrics()
+ 
+ 
+# ==========================
+# KPIs generales
+# ==========================
+ 
+c1, c2, c3, c4 = st.columns(4)
+ 
+c1.metric("Usuarios", format_number(data.get("total_users", 0)))
+c2.metric("Productos", format_number(data.get("total_products", 0)))
+c3.metric("Interacciones", format_number(data.get("total_interactions", 0)))
+c4.metric("Sparsity", f"{float(data.get('sparsity', 0)):.2f}%")
+ 
+st.divider()
+ 
+ 
+# ==========================
+# Arquitectura del recomendador
+# ==========================
+ 
+henry_tag("Arquitectura híbrida")
+st.subheader("🧠 Estrategias de recomendación")
+ 
+router_df = pd.DataFrame(
+    [
+        {
+            "Segmento / Caso de uso": "Cliente nuevo / sin historial",
+            "Modelo seleccionado": "Popularity Baseline",
+            "Objetivo": "Resolver el problema de cold start recomendando productos populares.",
+        },
+        {
+            "Segmento / Caso de uso": "Cliente existente sin historial suficiente",
+            "Modelo seleccionado": "Popularity Baseline",
+            "Objetivo": "Mantener recomendaciones estables cuando el historial individual es insuficiente.",
+        },
+        {
+            "Segmento / Caso de uso": "Cliente ocasional",
+            "Modelo seleccionado": "Item-Item Collaborative Filtering",
+            "Objetivo": "Recomendar productos similares según patrones de compra de otros usuarios.",
+        },
+        {
+            "Segmento / Caso de uso": "Cliente leal o frecuente",
+            "Modelo seleccionado": "Reorder Prediction",
+            "Objetivo": "Anticipar la recompra y sugerir productos para reponer.",
+        },
+        {
+            "Segmento / Caso de uso": "Complemento transversal",
+            "Modelo seleccionado": "Market Basket Analysis",
+            "Objetivo": "Mostrar 'También te puede interesar...' para aumentar el ticket mediante cross-selling.",
+        },
+    ]
+)
+ 
+st.dataframe(
+    router_df,
+    use_container_width=True,
+    hide_index=True,
+)
+ 
+st.info(
+    """
+    El valor del sistema no está en elegir un único modelo ganador, sino en combinar
+    la recomendación personalizada con una capa comercial de productos complementarios.
+    """
+)
+ 
+st.divider()
+ 
+ 
+# ==========================
+# Segmentación
+# ==========================
+ 
+henry_tag("Segmentación")
+st.subheader("👥 Métricas del modelo K-Means")
+ 
+kmeans = data.get("kmeans", {})
+ 
+k1, k2, k3 = st.columns(3)
+ 
+k1.metric("Clusters", kmeans.get("k", "-"))
+k2.metric("Silhouette Score", f"{float(kmeans.get('silhouette', 0)):.4f}")
+k3.metric("Davies-Bouldin", f"{float(kmeans.get('davies_bouldin', 0)):.4f}")
+ 
+st.caption(
+    "La segmentación permite asignar cada usuario a una estrategia de recomendación acorde a su comportamiento."
+)
+ 
+st.divider()
+ 
+ 
+# ==========================
+# Performance de modelos
+# ==========================
+ 
+henry_tag("Performance")
+st.subheader("📈 Desempeño de modelos")
+ 
+performance_table = build_performance_table(data.get("models", []))
+ 
+if performance_table.empty:
+    st.warning("No se encontraron métricas de modelos en dashboard_metrics.json.")
+else:
+    st.dataframe(
+        performance_table[
+            [
+                "Modelo",
+                "Caso de uso",
+                "Métrica principal",
+                "Valor",
+                "Notas",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+ 
+st.divider()
+ 
+ 
 # ==========================
 # Explorador de modelos
 # ==========================
-
+ 
 st.subheader("🔎 Explorador interactivo de modelos")
-
-selected_model = st.selectbox(
-    "Seleccioná un modelo",
-    performance_table["Modelo"].tolist()
-)
-
-
-selected = performance_table[
-    performance_table["Modelo"] == selected_model
-].iloc[0]
-
-MODEL_INFO = {
-
-    "Popularity Baseline": {
-        "descripcion":
-            "Modelo no personalizado utilizado para resolver el problema de cold-start. "
-            "Recomienda los productos con mayor popularidad histórica cuando un cliente aún no posee historial de compras.",
-
-        "porque":
-            "Fue incorporado para garantizar recomendaciones desde la primera interacción del usuario.",
-
-        "interpretacion":
-            "No requiere entrenamiento ni métricas tradicionales; actúa como línea base del sistema."
-    },
-
-    "Item-Item Collaborative Filtering": {
-        "descripcion":
-            "Calcula similitud entre productos utilizando el historial de compras de los clientes. "
-            "Cuando un usuario compra un producto, recomienda otros productos similares.",
-
-        "porque":
-            "Obtuvo Recall@10 = 0.0660, superando ampliamente al baseline (0.0460).",
-
-        "interpretacion":
-            "Recall@10 mide qué porcentaje de productos realmente comprados aparecen dentro de las primeras diez recomendaciones."
-    },
-
-    "Market Basket Analysis (Products)": {
-        "descripcion":
-            "Descubre asociaciones frecuentes entre productos mediante FP-Growth y reglas de asociación.",
-
-        "porque":
-            "Permite generar recomendaciones de cross-selling y creación de combos comerciales.",
-
-        "interpretacion":
-            "Su desempeño se evalúa mediante la cantidad y calidad de reglas generadas (Support, Confidence y Lift), no mediante Recall."
-    },
-
-    "Market Basket Analysis (Aisles)": {
-        "descripcion":
-            "Extiende Market Basket Analysis al nivel de pasillos para detectar categorías que suelen comprarse conjuntamente.",
-
-        "porque":
-            "Permite recomendar categorías completas y diseñar promociones cruzadas.",
-
-        "interpretacion":
-            "Se analiza mediante reglas de asociación entre categorías utilizando FP-Growth."
-    },
-
-    "Reorder Prediction (XGBoost)": {
-        "descripcion":
-            "Modelo supervisado entrenado para estimar la probabilidad de recompra de cada producto por cliente.",
-
-        "porque":
-            "Fue el modelo con mejor desempeño para clientes leales gracias a su capacidad para capturar patrones complejos.",
-
-        "interpretacion":
-            "La métrica principal es PR-AUC, especialmente adecuada para problemas con clases desbalanceadas."
-    }
-}
-
-info = MODEL_INFO.get(
-    selected["Modelo"],
-    {
-        "descripcion": selected["Notas"],
-        "porque": "-",
-        "interpretacion": "-"
-    }
-)
-
-st.markdown(
-    f"""
+ 
+if performance_table.empty:
+    st.info("No hay modelos disponibles para explorar.")
+else:
+    model_options = performance_table["Modelo"].drop_duplicates().tolist()
+ 
+    selected_model = st.selectbox(
+        "Seleccioná un modelo",
+        model_options,
+    )
+ 
+    selected = performance_table[
+        performance_table["Modelo"] == selected_model
+    ].iloc[0]
+ 
+    info = MODEL_INFO.get(
+        selected_model,
+        {
+            "caso_uso": selected.get("Caso de uso", "-"),
+            "metrica": selected.get("Métrica principal", "-"),
+            "descripcion": selected.get("Notas", "-"),
+            "porque": "Este modelo forma parte de la arquitectura híbrida del sistema.",
+            "interpretacion": "La interpretación depende de la métrica utilizada para este modelo.",
+        },
+    )
+ 
+    caso_uso = selected.get("Caso de uso", info["caso_uso"])
+    metrica = selected.get("Métrica principal", info["metrica"])
+    valor = selected.get("Valor", "-")
+ 
+    st.markdown(
+        f"""
 <div class="henry-card">
-
-### {selected["Modelo"]}
-
+ 
+### {selected_model}
+ 
 **Caso de uso**
-
-{selected["Caso de uso"]}
-
+ 
+{caso_uso}
+ 
 ---
-
+ 
 **Métrica principal**
-
-{selected["Métrica principal"]}
-
+ 
+{metrica}
+ 
 **Resultado obtenido**
-
-{selected["Valor"]}
-
+ 
+{valor}
+ 
 ---
-
+ 
 **¿Qué hace este modelo?**
-
+ 
 {info["descripcion"]}
-
+ 
 ---
-
+ 
 **¿Por qué fue seleccionado?**
-
+ 
 {info["porque"]}
-
+ 
 ---
-
+ 
 **¿Cómo interpretar este resultado?**
-
+ 
 {info["interpretacion"]}
-
+ 
 </div>
 """,
-    unsafe_allow_html=True
-)
-
+        unsafe_allow_html=True,
+    )
+ 
 st.divider()
-
-
+ 
+ 
 # ==========================
 # Reorder Prediction
 # ==========================
-
+ 
 henry_tag("Modelo supervisado")
-
 st.subheader("🏆 Reorder Prediction - XGBoost")
-
-reorder = models_df[
-    models_df["model"] == "Reorder Prediction (XGBoost)"
-].iloc[0]
-
-r1, r2, r3, r4 = st.columns(4)
-
-r1.metric("PR-AUC", f"{reorder['value']:.4f}")
-r2.metric("Precision", f"{reorder['precision']:.4f}")
-r3.metric("Recall", f"{reorder['recall']:.4f}")
-r4.metric("F1 Score", f"{reorder['f1']:.4f}")
-
-st.success(
-    f"""
-    **Modelo supervisado ganador:** XGBoost.
-
-    Fue seleccionado por su desempeño en **PR-AUC = {reorder['value']:.4f}**
-    y se utiliza para recomendar productos con alta probabilidad de recompra
-    en clientes leales.
-    """
-)
-
+ 
+models_raw = pd.DataFrame(data.get("models", []))
+ 
+if not models_raw.empty and "model" in models_raw.columns:
+    models_raw["model_normalized"] = models_raw["model"].apply(normalize_model_name)
+    reorder_rows = models_raw[
+        models_raw["model_normalized"] == "Reorder Prediction (XGBoost)"
+    ]
+else:
+    reorder_rows = pd.DataFrame()
+ 
+if reorder_rows.empty:
+    st.warning("No se encontraron métricas específicas de Reorder Prediction en el JSON.")
+else:
+    reorder = reorder_rows.iloc[0]
+ 
+    r1, r2, r3, r4 = st.columns(4)
+ 
+    r1.metric("PR-AUC", format_metric_value(reorder.get("value")))
+    r2.metric("Precision", format_metric_value(reorder.get("precision")))
+    r3.metric("Recall", format_metric_value(reorder.get("recall")))
+    r4.metric("F1 Score", format_metric_value(reorder.get("f1")))
+ 
+    st.success(
+        f"""
+        **Modelo supervisado seleccionado:** XGBoost.
+ 
+        Fue elegido para clientes leales o frecuentes porque permite estimar la probabilidad
+        de recompra de productos candidatos. En Render Free se utiliza una salida precalculada
+        del modelo validado localmente para mantener estable el despliegue.
+        """
+    )
+ 
 st.divider()
-
-
+ 
+ 
 # ==========================
-# Conclusiones
+# Lectura final
 # ==========================
-
+ 
 henry_tag("Conclusiones")
-
+ 
 st.markdown(
     """
 ### ✅ Lectura de resultados
-
+ 
 - El sistema no utiliza un único algoritmo de recomendación.
-- La API identifica el tipo de usuario y selecciona automáticamente la estrategia más adecuada.
-- Los usuarios sin historial reciben recomendaciones basadas en popularidad.
-- Los clientes ocasionales reciben recomendaciones mediante Item-Item Collaborative Filtering.
-- Los clientes leales utilizan un modelo supervisado de predicción de recompra.
-- Para carritos con múltiples productos se complementa la recomendación mediante Market Basket Analysis.
+- Primero identifica si el usuario tiene historial suficiente.
+- Si el usuario es nuevo o no tiene historial, utiliza **Popularity Baseline**.
+- Si el usuario es ocasional, utiliza **Item-Item Collaborative Filtering** para recomendar productos similares.
+- Si el usuario es leal o frecuente, utiliza **Reorder Prediction** para anticipar recompra.
+- La sección **También te puede interesar...** utiliza **Market Basket Analysis** como capa transversal de cross-selling.
+- La arquitectura final combina personalización, recompra y productos complementarios dentro de un mismo flujo de recomendación.
 """
 )

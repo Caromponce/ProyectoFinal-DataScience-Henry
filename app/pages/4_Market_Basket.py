@@ -17,6 +17,10 @@ st.set_page_config(
 inject_css()
 
 
+# ==========================================================
+# Carga de modelos
+# ==========================================================
+
 @st.cache_resource
 def load_mba_product_model():
     return MBA_Prod_Recommender.load()
@@ -27,24 +31,50 @@ def load_mba_aisle_model():
     return MBA_Aisle_Recommender.load()
 
 
-def get_products_from_rules(model):
-    product_ids = set()
+# ==========================================================
+# Funciones auxiliares - productos
+# ==========================================================
 
-    for antecedents in model.rules["antecedents"]:
-        product_ids.update(list(antecedents))
+def get_products_from_rules(model):
+    """
+    Devuelve únicamente productos que aparecen como antecedente en reglas
+    y que, además, tienen al menos una recomendación válida.
+    Esto evita que el selector arranque con productos sin resultado.
+    """
+
+    valid_product_ids = set()
+
+    for _, rule in model.rules.iterrows():
+        antecedents = set(rule["antecedents"])
+        consequents = set(rule["consequents"])
+
+        for product_id in antecedents:
+            has_valid_consequent = any(
+                consequent_id != product_id
+                and model.product_support.get(consequent_id, 0.0) <= model.max_consequent_support
+                for consequent_id in consequents
+            )
+
+            if has_valid_consequent:
+                valid_product_ids.add(product_id)
 
     products = [
         {
             "product_id": int(product_id),
             "product_name": model.id_to_name.get(product_id, f"Producto {product_id}")
         }
-        for product_id in product_ids
+        for product_id in valid_product_ids
     ]
 
     return pd.DataFrame(products).sort_values("product_name")
 
 
 def recommend_products_with_metrics(model, cart_product_ids, top_n=10):
+    """
+    Recomienda productos asociados al carrito de entrada.
+    El ranking prioriza lift y confidence.
+    """
+
     cart = set(cart_product_ids)
 
     applicable = model.rules[
@@ -92,24 +122,48 @@ def recommend_products_with_metrics(model, cart_product_ids, top_n=10):
     )
 
 
-def get_aisles_from_rules(model):
-    aisle_ids = set()
+# ==========================================================
+# Funciones auxiliares - pasillos
+# ==========================================================
 
-    for antecedents in model.rules["antecedents"]:
-        aisle_ids.update(list(antecedents))
+def get_aisles_from_rules(model):
+    """
+    Devuelve únicamente pasillos que aparecen como antecedente en reglas
+    y que tienen al menos una recomendación válida.
+    """
+
+    valid_aisle_ids = set()
+
+    for _, rule in model.rules.iterrows():
+        antecedents = set(rule["antecedents"])
+        consequents = set(rule["consequents"])
+
+        for aisle_id in antecedents:
+            has_valid_consequent = any(
+                consequent_id != aisle_id
+                and model.aisle_support.get(consequent_id, 0.0) <= model.max_consequent_support
+                for consequent_id in consequents
+            )
+
+            if has_valid_consequent:
+                valid_aisle_ids.add(aisle_id)
 
     aisles = [
         {
             "aisle_id": int(aisle_id),
             "aisle_name": model.id_to_name.get(aisle_id, f"Pasillo {aisle_id}")
         }
-        for aisle_id in aisle_ids
+        for aisle_id in valid_aisle_ids
     ]
 
     return pd.DataFrame(aisles).sort_values("aisle_name")
 
 
 def recommend_aisles_with_metrics(model, selected_aisle_id, top_n=10):
+    """
+    Recomienda pasillos asociados al pasillo seleccionado.
+    """
+
     applicable = model.rules[
         model.rules["antecedents"].apply(lambda antecedents: selected_aisle_id in antecedents)
     ]
@@ -155,6 +209,10 @@ def recommend_aisles_with_metrics(model, selected_aisle_id, top_n=10):
     )
 
 
+# ==========================================================
+# Sidebar
+# ==========================================================
+
 with st.sidebar:
     st.image("assets/logo_data_horizon.png", width=150)
     st.markdown(
@@ -167,29 +225,48 @@ with st.sidebar:
     st.divider()
 
 
+# ==========================================================
+# Header
+# ==========================================================
+
 henry_tag("Market Basket Analysis")
-henry_title("Carrito y Asociación de Productos")
+henry_title("También te puede interesar...")
 
 st.markdown(
     """
-    Explorador interactivo de reglas de asociación.  
-    Permite analizar qué productos o pasillos suelen comprarse juntos para generar
-    oportunidades de **cross-selling**.
+    Explorador interactivo de reglas de asociación para detectar productos o pasillos
+    que suelen comprarse juntos.  
+    Esta capa funciona como complemento comercial del recomendador principal,
+    orientada a **cross-selling**, combos y oportunidades para aumentar el ticket.
     """
 )
 
 st.divider()
 
+
 try:
     product_model = load_mba_product_model()
     aisle_model = load_mba_aisle_model()
+
+    # ==========================================================
+    # KPIs del modelo
+    # ==========================================================
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Reglas por producto", f"{len(product_model.rules):,}".replace(",", "."))
     c2.metric("Reglas por pasillo", f"{len(aisle_model.rules):,}".replace(",", "."))
     c3.metric("Algoritmo", "FP-Growth")
 
+    st.info(
+        "Market Basket Analysis no reemplaza la recomendación personalizada: "
+        "la complementa sugiriendo productos o categorías que suelen aparecer junto al carrito elegido."
+    )
+
     st.divider()
+
+    # ==========================================================
+    # Selector de análisis
+    # ==========================================================
 
     analysis_type = st.radio(
         "Seleccioná el análisis",
@@ -204,6 +281,10 @@ try:
         value=5
     )
 
+    # ==========================================================
+    # Productos asociados
+    # ==========================================================
+
     if analysis_type == "Productos asociados":
         henry_tag("Explorador por producto")
         st.subheader("🛒 Seleccioná productos del carrito")
@@ -214,16 +295,33 @@ try:
             zip(products_df["product_name"], products_df["product_id"])
         )
 
-        selected_name = st.selectbox(
-            "Producto con reglas disponibles",
-            options=products_df["product_name"].tolist(),
-            help="Se muestran solo productos que forman parte de reglas de asociación."
+        preferred_defaults = [
+            "Banana",
+            "Organic Strawberries",
+            "Organic Hass Avocado",
+            "Organic Baby Spinach",
+            "Bag of Organic Bananas"
+        ]
+
+        available_products = products_df["product_name"].tolist()
+        default_products = [name for name in preferred_defaults if name in available_products]
+
+        if not default_products and available_products:
+            default_products = [available_products[0]]
+
+        selected_names = st.multiselect(
+            "Productos con reglas disponibles",
+            options=available_products,
+            default=default_products[:2],
+            help="Se muestran solo productos que forman parte de reglas de asociación con recomendaciones disponibles."
         )
 
-        selected_names = [selected_name]
-        selected_ids = [int(product_name_to_id[selected_name])]
+        selected_ids = [int(product_name_to_id[name]) for name in selected_names]
 
-        if selected_ids:
+        if not selected_ids:
+            st.info("Seleccioná al menos un producto para ver sugerencias complementarias.")
+
+        else:
             result_df = recommend_products_with_metrics(
                 product_model,
                 selected_ids,
@@ -243,13 +341,16 @@ try:
             )
 
             if not result_df.empty:
-                st.subheader("⭐ Productos recomendados")
+                st.subheader("✨ También te puede interesar...")
+                st.caption(
+                    "Basado en productos que suelen comprarse junto con los productos seleccionados."
+                )
 
                 display_df = result_df.rename(
                     columns={
                         "rank": "Ranking",
                         "product_id": "ID Producto",
-                        "product_name": "Producto recomendado",
+                        "product_name": "Producto sugerido",
                         "support": "Frecuencia",
                         "confidence": "Probabilidad de recomendación",
                         "lift": "Fuerza de asociación"
@@ -266,13 +367,20 @@ try:
 
                 st.info(
                     f"""
-                    Mejor recomendación: **{best["product_name"]}**  
+                    Mejor sugerencia: **{best["product_name"]}**  
                     Probabilidad de recomendación: **{best["confidence"]:.1%}**  
                     Fuerza de asociación: **{best["lift"]:.2f}**
                     """
                 )
             else:
-                st.warning("No se encontraron recomendaciones para ese carrito.")
+                st.warning(
+                    "No se encontraron recomendaciones para ese carrito. "
+                    "Probá quitando algún producto o seleccionando otro producto de referencia."
+                )
+
+    # ==========================================================
+    # Pasillos asociados
+    # ==========================================================
 
     else:
         henry_tag("Explorador por pasillo")
@@ -284,10 +392,12 @@ try:
             zip(aisles_df["aisle_name"], aisles_df["aisle_id"])
         )
 
+        available_aisles = aisles_df["aisle_name"].tolist()
+
         selected_aisle_name = st.selectbox(
             "Pasillos con reglas disponibles",
-            options=aisles_df["aisle_name"].tolist(),
-            help="Se muestran solo pasillos que forman parte de reglas de asociación."
+            options=available_aisles,
+            help="Se muestran solo pasillos que forman parte de reglas de asociación con recomendaciones disponibles."
         )
 
         selected_aisle_id = int(aisle_name_to_id[selected_aisle_name])
@@ -301,13 +411,16 @@ try:
         st.success(f"Pasillo seleccionado: **{selected_aisle_name}**")
 
         if not result_df.empty:
-            st.subheader("⭐ Pasillos recomendados")
+            st.subheader("✨ También te puede interesar...")
+            st.caption(
+                "Basado en pasillos que suelen aparecer junto con el pasillo seleccionado."
+            )
 
             display_df = result_df.rename(
                 columns={
                     "rank": "Ranking",
                     "aisle_id": "ID Pasillo",
-                    "aisle_name": "Pasillo recomendado",
+                    "aisle_name": "Pasillo sugerido",
                     "support": "Frecuencia",
                     "confidence": "Probabilidad de recomendación",
                     "lift": "Fuerza de asociación"
@@ -324,7 +437,7 @@ try:
 
             st.info(
                 f"""
-                Mejor recomendación: **{best["aisle_name"]}**  
+                Mejor sugerencia: **{best["aisle_name"]}**  
                 Probabilidad de recomendación: **{best["confidence"]:.1%}**  
                 Fuerza de asociación: **{best["lift"]:.2f}**
                 """
@@ -333,6 +446,10 @@ try:
             st.warning("No se encontraron recomendaciones para ese pasillo.")
 
     st.divider()
+
+    # ==========================================================
+    # Interpretación
+    # ==========================================================
 
     henry_tag("Interpretación")
 
@@ -348,6 +465,10 @@ Una fuerza de asociación mayor a **1** indica que la relación es relevante.
 
 Este análisis permite transformar patrones de compra en acciones comerciales:
 recomendaciones inteligentes, combos, promociones cruzadas y sugerencias dentro del carrito.
+
+En la arquitectura general del sistema, esta sección representa la capa de **"También te puede interesar..."**:
+primero se genera una recomendación personalizada y luego se agregan sugerencias complementarias
+para potenciar el cross-selling.
 """
     )
 
@@ -361,3 +482,4 @@ except FileNotFoundError as error:
 except Exception as error:
     st.error("Ocurrió un error al cargar Market Basket.")
     st.code(str(error))
+
