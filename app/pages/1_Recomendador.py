@@ -205,25 +205,11 @@ if generate:
         st.warning("Seleccioná un número de cliente válido antes de generar recomendaciones.")
 
     else:
-        try:
-            response = get_recommendations(
-                user_id=int(user_id),
-                product_ids=product_ids,
-                n=n
-            )
 
-            result = response.get("result", {})
-            recommendations = result.get("recommendations", [])
-            predictions = result.get("predictions", [])
-            message = result.get("message")
-
-            strategy_display = {
-                "popularity": "Popularity Baseline",
-                "item_item_cf": "Item-Item Collaborative Filtering",
-                "market_basket": "Market Basket Analysis",
-                "market_basket_products": "Market Basket Analysis",
-                "reorder_prediction": "Reorder Prediction"
-            }
+        # ==========================================================
+        # Fallback para Render Free (Reorder Prediction)
+        # ==========================================================
+        if detected_segment == "Clientes Leales o frecuentes":
 
             st.divider()
             st.subheader("📌 Resultado de la recomendación")
@@ -232,26 +218,23 @@ if generate:
 
             with col1:
                 st.markdown("**Segmento**")
-                st.success(response.get("segment", detected_segment or "Cliente nuevo"))
+                st.success(detected_segment)
 
             with col2:
                 st.markdown("**Estrategia**")
-                st.info(
-                    strategy_display.get(
-                        response.get("strategy"),
-                        response.get("strategy", "Sin dato")
-                    )
-                )
+                st.info("Reorder Prediction")
 
             with col3:
                 st.markdown("**Cliente**")
-                if client_type == "Cliente nuevo":
-                    st.warning("Nuevo")
-                else:
-                    st.info(str(response.get("user_id", user_id)))
+                st.info(str(user_id))
 
             st.info(
-                f"🎯 **Objetivo:** {response.get('objective', 'Sin objetivo disponible')}"
+                "🎯 **Objetivo:** Predecir la probabilidad de recompra sobre productos candidatos."
+            )
+
+            st.warning(
+                "En el despliegue gratuito de Render este modelo supera los recursos disponibles. "
+                "Para la demo se muestra una salida representativa del modelo validado localmente."
             )
 
             if selected_products:
@@ -260,81 +243,191 @@ if generate:
                 st.dataframe(
                     pd.DataFrame(
                         [
-                         {
-                            "product_id": DEMO_PRODUCTS[name],
-                            "product_name": name
-                        }
-                        for name in selected_products
+                            {
+                                "product_id": DEMO_PRODUCTS[name],
+                                "product_name": name,
+                            }
+                            for name in selected_products
                         ]
                     ),
                     use_container_width=True,
-                    hide_index=True
+                    hide_index=True,
                 )
 
-            if recommendations:
-                recommendations_df = pd.DataFrame(recommendations)
+                demo_predictions = []
 
-                st.subheader("⭐ Productos recomendados")
-                st.dataframe(
-                    recommendations_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                for name in selected_products:
+                    if name in [
+                        "Banana",
+                        "Bag of Organic Bananas",
+                        "Organic Strawberries",
+                    ]:
+                        reorder = "si"
+                        proba = 0.84
+                    else:
+                        reorder = "no"
+                        proba = 0.68
 
-            elif predictions:
-                predictions_df = pd.DataFrame(predictions)
+                    demo_predictions.append(
+                        {
+                            "product_id": DEMO_PRODUCTS[name],
+                            "product_name": name,
+                            "reorder": reorder,
+                            "proba": proba,
+                        }
+                    )
 
                 st.subheader("🔁 Predicción de recompra")
+
                 st.dataframe(
-                    predictions_df,
+                    pd.DataFrame(demo_predictions),
                     use_container_width=True,
-                    hide_index=True
-                )
-
-            elif message:
-                st.warning(message)
-
-            else:
-                st.warning(
-                    "La API respondió correctamente, pero no devolvió recomendaciones."
+                    hide_index=True,
                 )
 
             st.subheader("📝 Explicación")
 
-            if client_type == "Cliente nuevo":
-                st.markdown(
-                    """
-                    Se simuló un **cliente nuevo o sin historial**.  
-                    Por eso el sistema utiliza recomendaciones basadas en popularidad.
-                    """
-                )
+            st.markdown(
+                f"""
+                El cliente **{user_id}** pertenece al segmento **Clientes Leales o frecuentes**.
 
-            elif detected_segment == "Clientes Ocasionales":
-                st.markdown(
-                    f"""
-                    El cliente **{user_id}** pertenece al segmento **Clientes Ocasionales**.  
-                    Para este perfil se utiliza **Item-Item Collaborative Filtering**, tomando
-como referencia     los productos seleccionados: **{", ".join(selected_products)}**.
-                    """
-                )
+                Para este perfil corresponde utilizar **Reorder Prediction**, un modelo supervisado
+                que estima la probabilidad de recompra de productos previamente conocidos por el cliente.
 
-            else:
-                st.markdown(
-                    f"""
-                    El cliente **{user_id}** pertenece al segmento **{detected_segment}**.  
-                    Para este perfil se utiliza **Reorder Prediction**, priorizando productos
-                    con mayor probabilidad de recompra según su historial.
-                    """
-                )
-
-        except requests.exceptions.ConnectionError:
-            st.error(
-                "No se pudo conectar con la API. En Render debería usar la URL configurada en API_URL."
+                El modelo fue entrenado y validado correctamente. Debido a las limitaciones de memoria
+                del plan gratuito de Render, esta demo muestra una salida representativa para evitar
+                interrupciones del servicio.
+                """
             )
 
-        except requests.exceptions.RequestException as error:
-            st.error(f"Error al consultar la API: {error}")
+        else:
 
-        except Exception as error:
-            st.error("Ocurrió un error al generar la recomendación.")
-            st.code(str(error))
+            try:
+                response = get_recommendations(
+                    user_id=int(user_id),
+                    product_ids=product_ids,
+                    n=n
+                )
+
+                result = response.get("result", {})
+                recommendations = result.get("recommendations", [])
+                predictions = result.get("predictions", [])
+                message = result.get("message")
+
+                strategy_display = {
+                    "popularity": "Popularity Baseline",
+                    "item_item_cf": "Item-Item Collaborative Filtering",
+                    "market_basket": "Market Basket Analysis",
+                    "market_basket_products": "Market Basket Analysis",
+                    "reorder_prediction": "Reorder Prediction"
+                }
+
+                st.divider()
+                st.subheader("📌 Resultado de la recomendación")
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.markdown("**Segmento**")
+                    st.success(response.get("segment", detected_segment or "Cliente nuevo"))
+
+                with col2:
+                    st.markdown("**Estrategia**")
+                    st.info(
+                        strategy_display.get(
+                            response.get("strategy"),
+                            response.get("strategy", "Sin dato")
+                        )
+                    )
+
+                with col3:
+                    st.markdown("**Cliente**")
+                    if client_type == "Cliente nuevo":
+                        st.warning("Nuevo")
+                    else:
+                        st.info(str(response.get("user_id", user_id)))
+
+                st.info(
+                    f"🎯 **Objetivo:** {response.get('objective', 'Sin objetivo disponible')}"
+                )
+
+                if selected_products:
+                    st.subheader("🛒 Productos seleccionados")
+
+                    st.dataframe(
+                        pd.DataFrame(
+                            [
+                                {
+                                    "product_id": DEMO_PRODUCTS[name],
+                                    "product_name": name
+                                }
+                                for name in selected_products
+                            ]
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+                if recommendations:
+                    st.subheader("⭐ Productos recomendados")
+                    st.dataframe(
+                        pd.DataFrame(recommendations),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+                elif predictions:
+                    st.subheader("🔁 Predicción de recompra")
+                    st.dataframe(
+                        pd.DataFrame(predictions),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+                elif message:
+                    st.warning(message)
+
+                else:
+                    st.warning(
+                        "La API respondió correctamente, pero no devolvió recomendaciones."
+                    )
+
+                st.subheader("📝 Explicación")
+
+                if client_type == "Cliente nuevo":
+                    st.markdown(
+                        """
+                        Se simuló un **cliente nuevo o sin historial**.
+                        Por eso el sistema utiliza recomendaciones basadas en popularidad.
+                        """
+                    )
+
+                elif detected_segment == "Clientes Ocasionales":
+                    st.markdown(
+                        f"""
+                        El cliente **{user_id}** pertenece al segmento **Clientes Ocasionales**.
+
+                        Para este perfil se utiliza **Item-Item Collaborative Filtering**,
+                        tomando como referencia los productos seleccionados:
+                        **{", ".join(selected_products)}**.
+                        """
+                    )
+
+                else:
+                    st.markdown(
+                        f"""
+                        El cliente **{user_id}** pertenece al segmento **{detected_segment}**.
+                        """
+                    )
+
+            except requests.exceptions.ConnectionError:
+                st.error(
+                    "No se pudo conectar con la API. Verificá que el servicio esté disponible en Render."
+                )
+
+            except requests.exceptions.RequestException as error:
+                st.error(f"Error al consultar la API: {error}")
+
+            except Exception as error:
+                st.error("Ocurrió un error al generar la recomendación.")
+                st.code(str(error))
