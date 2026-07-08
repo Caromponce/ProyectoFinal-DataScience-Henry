@@ -31,10 +31,17 @@ def get_user_segment(user_id: int) -> str:
 
 def build_user_segment_response(user_id: int) -> dict:
     segment = get_user_segment(user_id)
+
+    strategy_config = SEGMENT_STRATEGY.get(segment, {
+        "strategy": "market_basket",
+        "strategy_name": "Market Basket Analysis",
+        "objective": "Este modelo se utiliza en la sección Market Basket.",
+    })
+
     return {
         "user_id": user_id,
         "segment": segment,
-        "strategy": SEGMENT_STRATEGY.get(segment, {}),
+        "strategy": strategy_config,
     }
 
 
@@ -46,7 +53,16 @@ def recommend_by_popularity(n: int = 10) -> dict:
 
 
 def recommend_by_item_item(product_ids: list[int], n: int = 10) -> dict:
+    if not product_ids:
+        return {
+            "strategy": "item_item_cf",
+            "input_products": [],
+            "recommendations": [],
+            "message": "Para Item-Item CF se requiere seleccionar al menos un producto válido.",
+        }
+
     recommendations = models.item_item.recommend(product_ids, top_n=n)
+
     return {
         "strategy": "item_item_cf",
         "input_products": product_ids,
@@ -56,6 +72,7 @@ def recommend_by_item_item(product_ids: list[int], n: int = 10) -> dict:
 
 def recommend_by_market_basket_products(product_ids: list[int], n: int = 10) -> dict:
     recommendations = models.mba_products.recommend(product_ids, top_n=n)
+
     return {
         "strategy": "market_basket_products",
         "input_products": product_ids,
@@ -65,6 +82,7 @@ def recommend_by_market_basket_products(product_ids: list[int], n: int = 10) -> 
 
 def recommend_by_market_basket_aisles(product_ids: list[int], n: int = 10) -> dict:
     recommendations = models.mba_aisles.recommend(product_ids, top_n=n)
+
     return {
         "strategy": "market_basket_aisles",
         "input_products": product_ids,
@@ -73,7 +91,20 @@ def recommend_by_market_basket_aisles(product_ids: list[int], n: int = 10) -> di
 
 
 def predict_reorder(user_id: int, product_ids: list[int]) -> dict:
-    predictions = models.reorder.predict(user_id=user_id, product_ids=product_ids)
+    if not product_ids:
+        return {
+            "strategy": "reorder_prediction",
+            "user_id": user_id,
+            "input_products": [],
+            "predictions": [],
+            "message": "Para Reorder Prediction se requiere seleccionar productos candidatos válidos.",
+        }
+
+    predictions = models.reorder.predict(
+        user_id=user_id,
+        product_ids=product_ids,
+    )
+
     return {
         "strategy": "reorder_prediction",
         "user_id": user_id,
@@ -88,7 +119,7 @@ def build_recommendation_response(
     n: int = 10,
 ) -> dict:
     segment = get_user_segment(user_id)
-    strategy_config = SEGMENT_STRATEGY.get(segment, {})
+    strategy_config = SEGMENT_STRATEGY.get(segment)
 
     if segment == "Clientes sin historial de compras":
         result = recommend_by_popularity(n)
@@ -96,19 +127,36 @@ def build_recommendation_response(
     elif segment == "Clientes Ocasionales":
         result = recommend_by_item_item(product_ids or [], n)
 
-    elif segment == "Clientes de canasta grande":
-        result = recommend_by_market_basket_products(product_ids or [], n)
-
     elif segment == "Clientes Leales o frecuentes":
         result = predict_reorder(user_id, product_ids or [])
+
+    elif segment == "Clientes de canasta grande":
+        result = {
+            "strategy": "market_basket",
+            "message": "Este usuario pertenece a un patrón de canasta grande. Este caso se trabaja en la sección Market Basket, no en el recomendador individual.",
+            "input_products": product_ids or [],
+            "recommendations": [],
+        }
+
+        strategy_config = {
+            "strategy": "market_basket",
+            "strategy_name": "Market Basket Analysis",
+            "objective": "Modelo disponible en la sección Market Basket.",
+        }
 
     else:
         result = recommend_by_popularity(n)
 
+        strategy_config = {
+            "strategy": "popularity",
+            "strategy_name": "Popularity Baseline",
+            "objective": "Fallback seguro para usuarios sin segmento reconocido.",
+        }
+
     return {
         "user_id": user_id,
         "segment": segment,
-        "strategy": strategy_config.get("strategy", result.get("strategy")),
+        "strategy": strategy_config.get("strategy"),
         "strategy_name": strategy_config.get("strategy_name"),
         "objective": strategy_config.get("objective"),
         "result": result,

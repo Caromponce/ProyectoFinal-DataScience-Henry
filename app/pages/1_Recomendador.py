@@ -79,17 +79,108 @@ st.divider()
 
 user_segments = load_user_segments()
 
-# Productos validados para demo del modelo Item-Item CF
+# Productos válidos para demo de Item-Item CF y Reorder Prediction
 DEMO_PRODUCTS = {
-    "Organic Strawberries": 21137,
-    "Organic Garlic": 24964,
-    "Organic Hass Avocado": 47209,
-    "Organic Baby Spinach": 21903,
     "Banana": 24852,
     "Bag of Organic Bananas": 13176,
+    "Organic Strawberries": 21137,
+    "Organic Baby Spinach": 21903,
+    "Organic Hass Avocado": 47209,
+    "Organic Garlic": 24964,
 }
 
 col_input, col_info = st.columns([1, 2])
+
+with col_input:
+    st.subheader("👤 Tipo de cliente")
+
+    client_type = st.radio(
+        "Seleccioná el escenario",
+        options=["Cliente nuevo", "Cliente existente"],
+        horizontal=False
+    )
+
+    detected_segment = None
+    selected_products = []
+    product_ids = []
+
+    if client_type == "Cliente nuevo":
+        st.success("Cliente nuevo / sin historial")
+        st.caption("Se utilizará Popularity Baseline.")
+        user_id = 999999999
+
+    else:
+        st.subheader("🔎 Cliente existente")
+
+        user_id = st.number_input(
+            "Número de cliente",
+            min_value=1,
+            value=66356,
+            step=1,
+            help="Ingresá un user_id existente dentro del dataset."
+        )
+
+        detected_segment = get_client_segment(user_id, user_segments)
+
+        if detected_segment is None:
+            st.error(
+                "Ese número de cliente no está disponible en user_segments.csv. "
+                "Probá con un cliente existente."
+            )
+
+            if not user_segments.empty:
+                ejemplos = user_segments["user_id"].head(10).tolist()
+                st.caption(f"Ejemplos disponibles: {', '.join(map(str, ejemplos))}")
+
+        else:
+            st.success(f"Segmento detectado: **{detected_segment}**")
+
+            if detected_segment == "Clientes sin historial de compras":
+                st.markdown("**Modelo seleccionado:** Popularity Baseline")
+                st.caption("Aunque sea un cliente existente, no tiene historial suficiente. Se usa baseline.")
+
+            elif detected_segment == "Clientes Ocasionales":
+                st.markdown("**Modelo seleccionado:** Item-Item Collaborative Filtering")
+
+                selected_products = st.multiselect(
+                    "Seleccioná productos válidos de referencia",
+                    options=list(DEMO_PRODUCTS.keys()),
+                    default=["Organic Strawberries"],
+                    help="Estos productos se usan como entrada para buscar productos similares."
+                )
+
+                product_ids = [DEMO_PRODUCTS[p] for p in selected_products]
+
+            elif detected_segment == "Clientes Leales o frecuentes":
+                st.markdown("**Modelo seleccionado:** Reorder Prediction")
+
+                selected_products = st.multiselect(
+                    "Seleccioná productos candidatos a recompra",
+                    options=list(DEMO_PRODUCTS.keys()),
+                    default=["Banana", "Bag of Organic Bananas", "Organic Strawberries"],
+                    help="Reorder Prediction predice si el cliente volvería a comprar estos productos."
+                )
+
+                product_ids = [DEMO_PRODUCTS[p] for p in selected_products]
+
+            elif detected_segment == "Clientes de canasta grande":
+                st.markdown("**Modelo seleccionado:** Market Basket Analysis")
+                st.warning(
+                    "Este segmento se trabaja en la sección Market Basket, no en el recomendador individual."
+                )
+
+            else:
+                st.markdown("**Modelo seleccionado:** Popularity Baseline")
+                st.caption("Segmento no reconocido. Se usará fallback seguro.")
+
+    n = st.slider(
+        "Cantidad de recomendaciones",
+        min_value=1,
+        max_value=10,
+        value=5
+    )
+
+    generate = st.button("🚀 Generar recomendación", use_container_width=True)
 
 with col_input:
     st.subheader("👤 Tipo de cliente")
@@ -203,6 +294,8 @@ if generate:
 
             result = response.get("result", {})
             recommendations = result.get("recommendations", [])
+            predictions = result.get("predictions", [])
+            message = result.get("message")
 
             strategy_display = {
                 "popularity": "Popularity Baseline",
@@ -241,16 +334,17 @@ if generate:
                 f"🎯 **Objetivo:** {response.get('objective', 'Sin objetivo disponible')}"
             )
 
-            if selected_product_id is not None:
-                st.subheader("🛒 Producto utilizado como referencia")
+            if selected_products:
+                st.subheader("🛒 Productos seleccionados")
 
                 st.dataframe(
                     pd.DataFrame(
                         [
-                            {
-                                "product_id": selected_product_id,
-                                "product_name": selected_product_name
-                            }
+                         {
+                            "product_id": DEMO_PRODUCTS[name],
+                            "product_name": name
+                        }
+                        for name in selected_products
                         ]
                     ),
                     use_container_width=True,
@@ -266,6 +360,20 @@ if generate:
                     use_container_width=True,
                     hide_index=True
                 )
+
+            elif predictions:
+                predictions_df = pd.DataFrame(predictions)
+
+                st.subheader("🔁 Predicción de recompra")
+                st.dataframe(
+                    predictions_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            elif message:
+                st.warning(message)
+
             else:
                 st.warning(
                     "La API respondió correctamente, pero no devolvió recomendaciones."
