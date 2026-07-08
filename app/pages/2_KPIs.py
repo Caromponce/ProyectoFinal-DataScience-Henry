@@ -147,7 +147,7 @@ def build_performance_table(models):
 MODEL_INFO = {
     "Popularity Baseline": {
         "caso_uso": "Clientes nuevos o sin historial",
-        "metrica": "No aplica",
+        "metrica": "No aplica (modelo baseline)",
         "descripcion": (
             "Modelo no personalizado utilizado para resolver el problema de cold start. "
             "Recomienda los productos con mayor popularidad histórica cuando el cliente "
@@ -403,9 +403,26 @@ else:
         },
     )
  
-    caso_uso = selected.get("Caso de uso", info["caso_uso"])
-    metrica = selected.get("Métrica principal", info["metrica"])
-    valor = selected.get("Valor", "-")
+    def safe_value(value, fallback="-"):
+        """
+        Devuelve un valor seguro para mostrar en pantalla.
+        Si el valor viene vacío desde el JSON, usa el fallback definido en MODEL_INFO.
+        """
+
+        if value is None:
+            return fallback
+
+        value = str(value).strip()
+
+        if value in ["", "-", "None", "nan"]:
+            return fallback
+
+        return value
+
+
+    caso_uso = safe_value(selected.get("Caso de uso"), info["caso_uso"])
+    metrica = safe_value(selected.get("Métrica principal"), info["metrica"])
+    valor = safe_value(selected.get("Valor"), "Top-N productos populares")
  
     st.markdown(
         f"""
