@@ -87,6 +87,20 @@ DEMO_PRODUCTS = {
     "Organic Baby Spinach": 21903,
     "Organic Hass Avocado": 47209,
     "Organic Garlic": 24964,
+    "Organic Raspberries": 27966,
+    "Organic Blueberries": 39275,
+    "Organic Whole Milk": 27845,
+    "Organic Yellow Onion": 22935,
+    "Organic Cucumber": 30391,
+    "Organic Zucchini": 45007,
+    "Organic Fuji Apple": 28204,
+    "Organic Lemon": 47626,
+    "Large Lemon": 5876,
+    "Limes": 26209,
+    "Organic Cilantro": 42768,
+    "Organic Red Onion": 8518,
+    "Organic Small Bunch Celery": 42265,
+    "Organic Grape Tomatoes": 40706,
 }
 
 col_input, col_info = st.columns([1, 2])
