@@ -64,7 +64,7 @@ segments_data = [
     {
         "segment": "Clientes Ocasionales",
         "type": "Cluster K-Means",
-        "users": 5620,
+        "users": 91392,
         "percentage": 56.2,
         "strategy": "Item-Item Collaborative Filtering",
         "objective": "Recomendar productos similares según comportamiento histórico.",
@@ -75,7 +75,7 @@ segments_data = [
     {
         "segment": "Clientes Leales o frecuentes",
         "type": "Cluster K-Means",
-        "users": 4380,
+        "users": 71241,
         "percentage": 43.8,
         "strategy": "Reorder Prediction",
         "objective": "Anticipar la recompra de productos habituales.",
@@ -287,7 +287,7 @@ st.divider()
 
 henry_tag("Distribución")
 
-st.subheader("📊 Distribución real del K-Means")
+st.subheader("📊 Distribución de los clusters generados por K-Means")
 
 cluster_df = segments_df[
     segments_df["type"] == "Cluster K-Means"

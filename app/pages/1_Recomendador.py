@@ -252,18 +252,43 @@ def build_selected_products_df(selected_products):
 def build_mba_complements(selected_products, n=5):
     """
     Construye una tabla liviana de productos complementarios para la demo.
-    Se muestra solamente cuando el usuario seleccionó productos de referencia.
+
+    Primero busca reglas específicas en MBA_COMPLEMENTS.
+    Si los productos seleccionados no tienen reglas cargadas, utiliza un fallback
+    con productos populares compatibles para que la sección transversal
+    "También te puede interesar..." siempre pueda mostrarse en la demo.
     """
+
     complements = []
     selected_set = set(selected_products)
- 
+
     for product_name in selected_products:
         for complement in MBA_COMPLEMENTS.get(product_name, []):
             if complement not in selected_set and complement not in complements:
                 complements.append(complement)
- 
+
+    fallback_complements = [
+        "Banana",
+        "Bag of Organic Bananas",
+        "Organic Strawberries",
+        "Organic Baby Spinach",
+        "Organic Hass Avocado",
+        "Organic Blueberries",
+        "Organic Raspberries",
+        "Organic Whole Milk",
+        "Organic Cucumber",
+        "Organic Garlic",
+    ]
+
+    for complement in fallback_complements:
+        if len(complements) >= n:
+            break
+
+        if complement not in selected_set and complement not in complements:
+            complements.append(complement)
+
     complements = complements[:n]
- 
+
     return pd.DataFrame(
         [
             {
